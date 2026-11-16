@@ -262,7 +262,7 @@ bindControls({
 });
 
 function setCameraMode(mode) {
-  if (!['orbit', 'street', 'map','road'].includes(mode)) return;
+  if (!['orbit', 'street', 'map', 'road'].includes(mode)) return;
   cameraMode = mode;
   focusBuilding(cameraView);
 }
@@ -295,8 +295,9 @@ function focusBuilding(id = 'all') {
       50,
       250,
     );
-  } else if(cameraMode==='road'){
-    yaw=.18;pitch=.3;
+  } else if (cameraMode === 'road') {
+    yaw = 0.18;
+    pitch = 0.3;
   } else if (cameraMode === 'street') {
     yaw = parkFacingYaw;
     pitch = Math.asin((2.1 - center.y) / distance);

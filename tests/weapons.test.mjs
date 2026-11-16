@@ -518,7 +518,13 @@ test('observed signs use the documented face and height', async () => {
   assert(f.position.y < buildings[1].height * 0.25);
 });
 
-test('road view exposes the documented +z face while home framing stays park-facing',()=>{
- rebuild();game.setCameraMode('road');advance(.04);assert(game.camera.position.z>0);
- game.setCameraMode('orbit');game.focusBuilding('all');advance(.04);assert(game.camera.position.z<0);
+test('road view exposes the documented +z face while home framing stays park-facing', () => {
+  rebuild();
+  game.setCameraMode('road');
+  advance(0.04);
+  assert(game.camera.position.z > 0);
+  game.setCameraMode('orbit');
+  game.focusBuilding('all');
+  advance(0.04);
+  assert(game.camera.position.z < 0);
 });
