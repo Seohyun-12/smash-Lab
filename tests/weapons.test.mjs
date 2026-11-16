@@ -64,7 +64,7 @@ src =
   'const performance={now:()=>globalThis.__smashTestNow()};const setTimeout=()=>0,clearTimeout=()=>{};\n' +
   src;
 src +=
-  '\nexport {reset,attack,selectWeapon,frame,updateHud,detach,blocks,camera}; export const state=()=>({destroyed,points,initialCount,actions:actions.length,debris:debris.length,particles:particles.length,completed,containerIndex});';
+  '\nexport {reset,attack,selectWeapon,frame,updateHud,detach,impact,focusBuilding,blocks,camera}; export const state=()=>({destroyed,points,initialCount,actions:actions.length,debris:debris.length,particles:particles.length,completed,containerIndex});';
 const game = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
 function advance(seconds) {
   for (let i = 0; i < Math.ceil(seconds / 0.04); i++) {
@@ -171,4 +171,77 @@ test('completion requires all blocks, even when the rounded percentage would be 
   game.updateHud();
   assert.equal(game.state().completed, true);
   assert.equal(el('#percent').textContent, '100%');
+});
+
+test('F is an independently destructible target for all eight tools', () => {
+  for (const kind of Object.keys(WEAPONS)) {
+    rebuild();
+    game.focusBuilding('F');
+    advance(0.04);
+    game.selectWeapon(kind);
+    const piece = game.blocks.find(
+      (b) => b.userData.buildingId === 'F' && b.userData.floor === 4 && b.position.z > 8,
+    );
+    const point = piece.position.clone().project(game.camera);
+    game.attack((point.x + 1) * 600, (1 - point.y) * 325);
+    advance(1);
+    assert(
+      game.blocks.some((b) => b.userData.buildingId === 'F' && !b.userData.alive),
+      kind,
+    );
+    assert(
+      game.blocks.filter((b) => b.userData.buildingId === 'E').every((b) => b.userData.alive),
+      kind + ' should not reach E from this aim',
+    );
+  }
+  game.focusBuilding('all');
+});
+
+test('E support collapse never cascades through the F floor with the same number', () => {
+  rebuild();
+  const floor = game.blocks.filter((b) => b.userData.buildingId === 'E' && b.userData.floor === 0);
+  for (const b of floor.slice(0, -1)) game.detach(b, new THREE.Vector3());
+  const hit = floor.at(-1).position.clone();
+  game.impact('hammer', hit, new THREE.Vector3(0, 0, -1), 0, 0, 'E');
+  assert(game.blocks.filter((b) => b.userData.buildingId === 'E').every((b) => !b.userData.alive));
+  assert(game.blocks.filter((b) => b.userData.buildingId === 'F').every((b) => b.userData.alive));
+  assert.equal(el('#progressE').textContent, '100%');
+  assert.equal(el('#progressF').textContent, '0%');
+  assert.equal(game.state().completed, false);
+});
+
+test('floor tiles cover the actual E footprint without filling its slanted cutout', async () => {
+  rebuild();
+  const { buildings } = await import('../dist/model.js');
+  for (const building of buildings) {
+    const expected =
+      Math.abs(
+        building.outline.reduce((sum, p, i) => {
+          const q = building.outline[(i + 1) % building.outline.length];
+          return sum + p[0] * q[1] - q[0] * p[1];
+        }, 0),
+      ) / 2;
+    const tiles = game.blocks.filter(
+      (b) =>
+        b.userData.buildingId === building.id &&
+        b.userData.floor === 0 &&
+        b.geometry.type === 'ExtrudeGeometry',
+    );
+    let area = 0;
+    for (const tile of tiles) {
+      const positions = tile.geometry.attributes.position,
+        normals = tile.geometry.attributes.normal;
+      for (let i = 0; i < positions.count; i += 3) {
+        if (normals.getY(i) < 0.9) continue;
+        const a = new THREE.Vector3().fromBufferAttribute(positions, i),
+          b = new THREE.Vector3().fromBufferAttribute(positions, i + 1),
+          c = new THREE.Vector3().fromBufferAttribute(positions, i + 2);
+        area += b.sub(a).cross(c.sub(a)).length() / 2;
+      }
+    }
+    assert(
+      Math.abs(area - expected) < 0.1,
+      building.id + ' floor area must match its source polygon',
+    );
+  }
 });

@@ -100,33 +100,25 @@ function addRoad(scene, road) {
   }
 }
 
-export function buildScenery(scene, B) {
-  const m = materials;
-  const width = B.columns * B.cell;
-  const depth = B.depth * B.cell;
-  cube(scene, 0, -1, 0, GROUND_SIZE, 1.5, GROUND_SIZE, mat('#a5bca6'));
-  cube(scene, 0, -0.13, 0, width + 18, 0.6, depth + 19.5, mat('#b7c9b3'));
-  cube(scene, 0, 0.22, 0, width + 8, 0.15, depth + 9.5, mat('#d0d8c6'));
-
+export function buildScenery(scene) {
+  cube(scene, 12, -1, 0, GROUND_SIZE, 1.5, GROUND_SIZE, mat('#a5bca6'));
+  cube(scene, 12, -0.13, 0, 66, 0.6, 32, mat('#b7c9b3'));
   for (const road of site.roads) addRoad(scene, road);
   for (const neighbor of site.neighbors) addNeighbor(scene, neighbor);
 
-  // Trees and parked cars are decorative and not taken from map data.
+  // Trees and parked cars are decorative, placed outside both map footprints.
   const crown = new THREE.IcosahedronGeometry(1.7, 1);
-  const frontZ = depth / 2 + 5.5;
-  for (let x = -width / 2; x <= width / 2 + 0.1; x += width / 5) {
-    cube(scene, x, 1, frontZ, 0.25, 2, 0.25, m.bark);
-    const tree = new THREE.Mesh(crown, m.leaf);
-    tree.position.set(x, 3, frontZ);
+  for (const x of [-17, -8, 2, 12, 22, 33, 43]) {
+    cube(scene, x, 1, 14, 0.25, 2, 0.25, materials.bark);
+    const tree = new THREE.Mesh(crown, materials.leaf);
+    tree.position.set(x, 3, 14);
     tree.scale.y = 1.3;
     tree.castShadow = true;
     scene.add(tree);
   }
-
-  for (const x of [-width / 2 + 2, 4, width / 2 - 3]) {
-    const z = depth / 2 + 10.5;
-    cube(scene, x, 0.5, z, 2.5, 0.8, 1.15, m.car);
-    cube(scene, x, 0.95, z, 1.3, 0.5, 1.05, m.dark);
+  for (const x of [-10, 8, 28]) {
+    cube(scene, x, 0.5, -14, 2.5, 0.8, 1.15, materials.car);
+    cube(scene, x, 0.95, -14, 1.3, 0.5, 1.05, materials.dark);
   }
 }
 
@@ -146,52 +138,139 @@ export function createSignMaterial(text = 'INNOVALLEY  /  E') {
   return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
 }
 
-// Calls addBlock(x, y, z, w, h, d, material, floor) for every breakable piece.
-export function buildTarget(B, addBlock, signMaterial) {
-  const { concrete, dark, glass, lightGlass, trim } = materials;
-  const width = B.columns * B.cell;
-  const depth = B.depth * B.cell;
-  const top = B.floors * B.floorHeight;
-
-  for (let f = 0; f < B.floors; f++) {
-    const y = f * B.floorHeight + 1.65;
-
-    // Front and back façades.
-    for (let col = 0; col < B.columns; col++) {
-      for (const side of [-1, 1]) {
-        const x = (col - (B.columns - 1) / 2) * B.cell;
-        const panel = col % 4 === 0 ? trim : (col + f) % 3 === 0 ? lightGlass : glass;
-        addBlock(x, y, (side * depth) / 2, 1.43, 1.92, 0.55, panel, f);
-      }
+// Clip the footprint into independently breakable floor tiles, preserving slanted edges.
+function clipPolygon(points, axis, bound, keepGreater) {
+  const result = [];
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i],
+      b = points[(i + 1) % points.length];
+    const insideA = keepGreater ? a[axis] >= bound : a[axis] <= bound;
+    const insideB = keepGreater ? b[axis] >= bound : b[axis] <= bound;
+    if (insideA) result.push(a);
+    if (insideA !== insideB) {
+      const t = (bound - a[axis]) / (b[axis] - a[axis]);
+      result.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
     }
-
-    // Side façades.
-    for (let col = 0; col < B.depth - 1; col++) {
-      for (const side of [-1, 1]) {
-        const z = (col - (B.depth - 2) / 2) * B.cell;
-        addBlock((side * width) / 2, y, z, 0.6, 1.92, 1.43, col % 3 === 0 ? trim : glass, f);
-      }
-    }
-
-    // Breakable floor plates, visible through holes in the façade.
-    const plates = Math.round(width / 3);
-    const plateWidth = width / plates;
-    for (let k = 0; k < plates; k++)
-      addBlock(
-        (k - (plates - 1) / 2) * plateWidth,
-        y - 1.07,
-        0,
-        plateWidth - 0.04,
-        0.28,
-        depth + 0.6,
-        concrete,
-        f,
-      );
   }
+  return result;
+}
 
-  const roofFloor = B.floors - 1;
-  addBlock(0, top + 0.5, 0, width + 1, 0.5, depth + 1.5, trim, roofFloor);
-  addBlock(-6, top + 1.5, -1, 4, 2, 3, dark, roofFloor);
-  addBlock(1, top + 1.25, -2, 3, 1.5, 3, concrete, roofFloor);
-  addBlock(0, top - 0.6, depth / 2 + 0.37, 11, 0.95, 0.15, signMaterial, roofFloor);
+const prismCache = new Map();
+function floorTiles(outline) {
+  const key = JSON.stringify(outline);
+  if (prismCache.has(key)) return prismCache.get(key);
+  const xs = outline.map((p) => p[0]),
+    zs = outline.map((p) => p[1]);
+  const tiles = [];
+  for (let x = Math.min(...xs); x < Math.max(...xs); x += 4.5) {
+    for (let z = Math.min(...zs); z < Math.max(...zs); z += 4.5) {
+      let ring = clipPolygon(outline, 0, x, true);
+      ring = clipPolygon(ring, 0, x + 4.5, false);
+      ring = clipPolygon(ring, 1, z, true);
+      ring = clipPolygon(ring, 1, z + 4.5, false);
+      if (ring.length < 3) continue;
+      const area =
+        Math.abs(
+          ring.reduce((sum, p, i) => {
+            const q = ring[(i + 1) % ring.length];
+            return sum + p[0] * q[1] - q[0] * p[1];
+          }, 0),
+        ) / 2;
+      if (area < 0.05) continue;
+      const cx = ring.reduce((sum, p) => sum + p[0], 0) / ring.length;
+      const cz = ring.reduce((sum, p) => sum + p[1], 0) / ring.length;
+      const shape = new THREE.Shape(ring.map(([px, pz]) => new THREE.Vector2(px - cx, -pz + cz)));
+      const geometry = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+      geometry.rotateX(-Math.PI / 2);
+      geometry.translate(0, -0.5, 0);
+      tiles.push({ x: cx, z: cz, geometry });
+    }
+  }
+  prismCache.set(key, tiles);
+  return tiles;
+}
+
+// Keep each piece's position in the site frame so hit tests, fragments and both targets agree.
+export function buildTarget(B, addBlock, signMaterial) {
+  const tiles = floorTiles(B.outline);
+  const meta = { buildingId: B.id };
+  for (let floor = 0; floor < B.floors; floor++) {
+    const y = 0.5 + (floor + 0.5) * B.floorHeight;
+    for (let edge = 0; edge < B.outline.length; edge++) {
+      const a = B.outline[edge],
+        b = B.outline[(edge + 1) % B.outline.length];
+      const dx = b[0] - a[0],
+        dz = b[1] - a[1],
+        length = Math.hypot(dx, dz);
+      const panels = Math.max(1, Math.ceil(length / 1.8));
+      const panelWidth = length / panels;
+      for (let i = 0; i < panels; i++) {
+        const t = (i + 0.5) / panels;
+        const material =
+          floor === 0
+            ? materials.dark
+            : (i + floor) % 4 === 0
+              ? materials.lightGlass
+              : materials.glass;
+        const mesh = addBlock(
+          a[0] + dx * t,
+          y,
+          a[1] + dz * t,
+          panelWidth - 0.025,
+          B.floorHeight - 0.16,
+          0.32,
+          material,
+          floor,
+          meta,
+        );
+        mesh.rotation.y = -Math.atan2(dz, dx);
+      }
+    }
+    for (const tile of tiles)
+      addBlock(tile.x, 0.5 + floor * B.floorHeight, tile.z, 1, 0.22, 1, materials.concrete, floor, {
+        ...meta,
+        geometry: tile.geometry,
+      });
+  }
+  for (const tile of tiles)
+    addBlock(tile.x, B.height + 0.5, tile.z, 1, 0.32, 1, materials.trim, B.floors - 1, {
+      ...meta,
+      geometry: tile.geometry,
+    });
+  // Top and end trims are segmented so the full outline remains destructible.
+  for (let edge = 0; edge < B.outline.length; edge++) {
+    const a = B.outline[edge],
+      b = B.outline[(edge + 1) % B.outline.length];
+    const dx = b[0] - a[0],
+      dz = b[1] - a[1],
+      length = Math.hypot(dx, dz),
+      count = Math.max(1, Math.ceil(length / 3));
+    for (let i = 0; i < count; i++) {
+      const t = (i + 0.5) / count;
+      const mesh = addBlock(
+        a[0] + dx * t,
+        B.height + 0.75,
+        a[1] + dz * t,
+        length / count,
+        0.42,
+        0.55,
+        materials.trim,
+        B.floors - 1,
+        meta,
+      );
+      mesh.rotation.y = -Math.atan2(dz, dx);
+    }
+  }
+  const frontZ = Math.max(...B.outline.map((p) => p[1]));
+  addBlock(
+    B.center[0],
+    3.5,
+    frontZ + 0.3,
+    Math.min(10, B.footprintMeters[0] * site.scale * 0.7),
+    1.2,
+    0.2,
+    signMaterial,
+    1,
+    meta,
+  );
 }

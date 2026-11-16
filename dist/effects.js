@@ -39,7 +39,7 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
     scene.add(line);
     getParticles().push(line);
   }
-  function launch({ kind, hit, direction, floor, variant }) {
+  function launch({ kind, hit, direction, floor, variant, buildingId }) {
     const config = WEAPONS[kind];
     const model = createWeaponModel(kind, variant);
     scene.add(model);
@@ -56,7 +56,18 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
       model.lookAt(hit);
     }
     model.position.copy(start);
-    actions.push({ model, kind, variant, hit, direction, floor, start, age: 0, impacted: false });
+    actions.push({
+      model,
+      kind,
+      variant,
+      hit,
+      direction,
+      floor,
+      buildingId,
+      start,
+      age: 0,
+      impacted: false,
+    });
     toast(
       config.animation === 'swing'
         ? '고무망치 내려치는 중!'
@@ -109,7 +120,7 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
         config.animation === 'swing' ? 0.72 : config.animation === 'spray' ? 0.6 : 1;
       if (!a.impacted && t >= impactTime) {
         a.impacted = true;
-        onImpact(a.kind, a.hit, a.direction, a.floor, a.variant);
+        onImpact(a.kind, a.hit, a.direction, a.floor, a.variant, a.buildingId);
       }
       if (t === 1) {
         a.model.removeFromParent();

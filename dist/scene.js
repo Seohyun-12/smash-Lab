@@ -6,8 +6,8 @@ export function createGameScene(
 ) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#c6d5c9');
-  scene.fog = new THREE.Fog('#c6d5c9', 110, 240);
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 350);
+  scene.fog = new THREE.Fog('#c6d5c9', 180, 420);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 550);
   let renderer;
   try {
     renderer = makeRenderer();

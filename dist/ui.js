@@ -36,7 +36,15 @@ export function createUI() {
     $('#sound').setAttribute('aria-pressed', enabled);
   }
 
-  return { toast, renderScore, renderWeapon, renderSound };
+  function renderBuilding(id, percentage) {
+    $('#progress' + id).textContent = percentage + '%';
+  }
+  function renderView(id) {
+    document.querySelectorAll('[data-view]').forEach((button) => {
+      button.setAttribute('aria-pressed', button.dataset.view === id);
+    });
+  }
+  return { toast, renderScore, renderWeapon, renderSound, renderBuilding, renderView };
 }
 
 export function bindControls({
@@ -48,10 +56,14 @@ export function bindControls({
   home,
   zoom,
   orbit,
+  focus,
 }) {
   document.querySelectorAll('.weapon').forEach((button) => {
     button.onclick = () => selectWeapon(button.dataset.weapon);
   });
+  document
+    .querySelectorAll('[data-view]')
+    .forEach((button) => (button.onclick = () => focus(button.dataset.view)));
   $('#reset').onclick = reset;
   $('#home').onclick = home;
   $('#zoomIn').onclick = () => zoom(-7);
