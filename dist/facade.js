@@ -110,6 +110,29 @@ export function addPhotoDetails(building, addBlock, materials) {
   return face.index;
 }
 
+export function addGlazedBoxes(building,addBlock,materials) {
+  const face=faceFor(building,'+z');
+  const piece=facadePieceBuilder(building,face,addBlock);
+  for(const box of building.exterior?.glassBoxes??[]){
+    const along=face.length*box.u;
+    const height=box.floors*building.floorHeight;
+    const base=.5+box.floor*building.floorHeight;
+    const meta={role:'glass-box'};
+    const columns=3,rows=Math.ceil(box.floors);
+    for(let row=0;row<rows;row++)for(let column=0;column<columns;column++){
+      piece(along+(column-(columns-1)/2)*box.width/columns,base+(row+.5)*height/rows,box.width/columns-.025,height/rows-.025,.16,materials.glass,box.floor+row,box.depth+.24,meta);
+    }
+    for(const offset of [-box.width/2,box.width/2])piece(along+offset,base+height/2,.16,height,box.depth,materials.lightGlass,box.floor,box.depth/2+.24,meta);
+    for(const y of [base,base+height])piece(along,y,box.width+.2,.14,box.depth+.2,roundGlass,box.floor,box.depth/2+.24,meta);
+    for(const offset of [-box.width/2,box.width/2])piece(along+offset,base+height/2,.09,height+.1,.12,silver,box.floor,box.depth+.35,meta);
+    const lineWidth=Math.min(box.length,face.length-along-box.width/2-.6);
+    if(lineWidth>0){
+      const accent=new THREE.MeshStandardMaterial({color:box.accent,metalness:.2,roughness:.4});
+      piece(along+box.width/2+lineWidth/2,base+.15,lineWidth,.14,.16,accent,box.floor,.44,{role:'accent-band'});
+    }
+  }
+}
+
 function addRoundedFrame(building, face, addBlock, materials) {
   // White side frames and rounded top corners, split into destructible segments.
   const rawPiece = facadePieceBuilder(building, face, addBlock);

@@ -1,4 +1,4 @@
-import { addPhotoDetails, buildingFaces, cladding } from './facade.js';
+import { addPhotoDetails, addGlazedBoxes, buildingFaces, cladding } from './facade.js';
 import { glassMaterial } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 import { site } from './site.js';
@@ -327,6 +327,7 @@ export function buildTarget(B, addBlock, signMaterial) {
     }
   }
   addPhotoDetails(B, addBlock, materials);
+  addGlazedBoxes(B,addBlock,materials);
   const frontZ = Math.max(...B.outline.map((p) => p[1]));
   addBlock(
     B.center[0],

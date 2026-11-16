@@ -368,3 +368,20 @@ test('matching facade material settings share GPU resources across rebuilds', as
   rebuild();
   assert.equal(first, glassMaterial('#6f9fb4', false, { frameColor: '#4a4f52' }));
 });
+
+test('projecting glazed boxes and colored strips belong only to the documented road face', () => {
+  rebuild();
+  const boxes=game.blocks.filter(b=>b.userData.role==='glass-box');
+  const accents=game.blocks.filter(b=>b.userData.role==='accent-band');
+  assert(boxes.length>0);
+  assert.equal(accents.length,3);
+  for(const piece of [...boxes,...accents]){
+    assert.equal(piece.userData.buildingId,'E');
+    assert.equal(piece.userData.face,'+z');
+    assert(piece.position.z>9,'the projections must stand in front of the road face');
+  }
+  const count=game.blocks.length;
+  game.detach(boxes[0],boxes[0].position.clone());
+  game.reset();
+  assert.equal(game.blocks.length,count);
+});
