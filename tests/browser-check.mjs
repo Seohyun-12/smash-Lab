@@ -25,7 +25,11 @@ async function prepare(options) {
   await page.route('**/game.js', async (route) => {
     const response = await route.fetch();
     const body = await response.text();
-    await route.fulfill({ response, body: body + `
+    await route.fulfill({
+      response,
+      body:
+        body +
+        `
 window.__smashTest={
   state:()=>({destroyed,actions:actions.length,sound,audioState:audioCtx?.state,
     camera:[camera.position.x,camera.position.y,camera.position.z],
@@ -36,7 +40,8 @@ window.__smashTest={
     const p=b.position.clone().project(camera),r=viewport.getBoundingClientRect();
     return {x:r.left+(p.x+1)*r.width/2,y:r.top+(1-p.y)*r.height/2};
   },attack,reset
-};` });
+};`,
+    });
   });
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__smashTest);
@@ -45,8 +50,8 @@ window.__smashTest={
 
 async function aim(page, id) {
   await page.locator('#viewport').scrollIntoViewIfNeeded();
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
-  return page.evaluate(id => window.__smashTest.aim(id), id);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
+  return page.evaluate((id) => window.__smashTest.aim(id), id);
 }
 
 try {
@@ -64,7 +69,7 @@ try {
 
   await page.locator('#reset').click();
   await page.locator('[data-view="all"]').click();
-  for (const mode of ['street','map','orbit']) {
+  for (const mode of ['street', 'map', 'orbit']) {
     await page.locator(`[data-mode="${mode}"]`).click();
     assert.equal(await page.locator(`[data-mode="${mode}"]`).getAttribute('aria-pressed'), 'true');
     await page.locator('.arena').screenshot({ path: new URL(`${mode}.png`, output).pathname });
@@ -72,7 +77,12 @@ try {
   console.log('PASS desktop: street, map and orbit views; screenshots saved');
   await desktop.context.close();
 
-  const mobile = await prepare({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+  const mobile = await prepare({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    deviceScaleFactor: 1,
+  });
   const phone = mobile.page;
   await phone.locator('[data-view="F"]').tap();
   await phone.locator('[data-weapon="hammer"]').tap();
@@ -86,21 +96,29 @@ try {
   const rect = await phone.locator('#viewport').boundingBox();
   const before = await phone.evaluate(() => window.__smashTest.state());
   const client = await mobile.context.newCDPSession(phone);
-  const x = rect.x + rect.width * .5, y = rect.y + rect.height * .5;
-  await client.send('Input.dispatchTouchEvent', { type:'touchStart', touchPoints:[{x,y}] });
-  await client.send('Input.dispatchTouchEvent', { type:'touchMove', touchPoints:[{x:x+45,y:y+10}] });
-  await client.send('Input.dispatchTouchEvent', { type:'touchEnd', touchPoints:[] });
-  await phone.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
+  const x = rect.x + rect.width * 0.5,
+    y = rect.y + rect.height * 0.5;
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  await client.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: x + 45, y: y + 10 }],
+  });
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await phone.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
   const after = await phone.evaluate(() => window.__smashTest.state());
   assert.equal(after.destroyed, 0, 'drag must not attack');
   assert.notDeepEqual(after.camera, before.camera, 'touch drag must orbit');
   await phone.locator('#sound').tap();
   await phone.waitForFunction(() => window.__smashTest.state().audioState === 'running');
-  await phone.locator('.arena').screenshot({ path:new URL('mobile.png',output).pathname });
+  await phone.locator('.arena').screenshot({ path: new URL('mobile.png', output).pathname });
   await mobile.context.close();
   assert.deepEqual(errors, []);
-  console.log('PASS mobile emulation: F tap, drag without attack, no horizontal overflow, AudioContext running');
-  console.log('Real-phone hardware, actual audible sound and device performance remain unverified.');
+  console.log(
+    'PASS mobile emulation: F tap, drag without attack, no horizontal overflow, AudioContext running',
+  );
+  console.log(
+    'Real-phone hardware, actual audible sound and device performance remain unverified.',
+  );
 } finally {
   await browser.close();
 }

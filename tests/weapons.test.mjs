@@ -32,7 +32,13 @@ globalThis.document = {
   createElement: () => ({
     width: 0,
     height: 0,
-    getContext: () => ({ fillRect() {}, fillText() {}, createLinearGradient(){return {addColorStop(){}};} }),
+    getContext: () => ({
+      fillRect() {},
+      fillText() {},
+      createLinearGradient() {
+        return { addColorStop() {} };
+      },
+    }),
   }),
 };
 globalThis.window = { addEventListener() {} };
@@ -248,27 +254,34 @@ test('floor tiles cover the actual E footprint without filling its slanted cutou
 
 test('map and street cameras keep the same destructible site', () => {
   rebuild();
-  const count=game.blocks.length;
-  game.setCameraMode('map');advance(.04);
-  assert(game.camera.position.y>70);
-  game.setCameraMode('street');advance(.04);
-  assert(Math.abs(game.camera.position.y-2.1)<.001);
-  game.focusBuilding('F');advance(.04);
-  assert(Math.abs(game.camera.position.y-2.1)<.001);
-  assert.equal(game.blocks.length,count);
-  assert.equal(game.state().destroyed,0);
-  game.setCameraMode('orbit');game.focusBuilding('all');
+  const count = game.blocks.length;
+  game.setCameraMode('map');
+  advance(0.04);
+  assert(game.camera.position.y > 70);
+  game.setCameraMode('street');
+  advance(0.04);
+  assert(Math.abs(game.camera.position.y - 2.1) < 0.001);
+  game.focusBuilding('F');
+  advance(0.04);
+  assert(Math.abs(game.camera.position.y - 2.1) < 0.001);
+  assert.equal(game.blocks.length, count);
+  assert.equal(game.state().destroyed, 0);
+  game.setCameraMode('orbit');
+  game.focusBuilding('all');
 });
 
 test('an exact roof hit breaks a tile even at the corner between tile centers', async () => {
   rebuild();
-  game.setCameraMode('map');advance(.04);game.selectWeapon('hammer');
-  const {buildings}=await import('../dist/model.js');
-  const e=buildings[0];
-  const x=Math.min(...e.outline.map(p=>p[0]))+4.5*3;
-  const z=Math.min(...e.outline.map(p=>p[1]))+4.5*2;
-  const point=new THREE.Vector3(x,e.height+.67,z).project(game.camera);
-  game.attack((point.x+1)*600,(1-point.y)*325);
-  assert(game.state().destroyed>0,'direct ray hit on roof tile must cause damage');
-  game.setCameraMode('orbit');game.focusBuilding('all');
+  game.setCameraMode('map');
+  advance(0.04);
+  game.selectWeapon('hammer');
+  const { buildings } = await import('../dist/model.js');
+  const e = buildings[0];
+  const x = Math.min(...e.outline.map((p) => p[0])) + 4.5 * 3;
+  const z = Math.min(...e.outline.map((p) => p[1])) + 4.5 * 2;
+  const point = new THREE.Vector3(x, e.height + 0.67, z).project(game.camera);
+  game.attack((point.x + 1) * 600, (1 - point.y) * 325);
+  assert(game.state().destroyed > 0, 'direct ray hit on roof tile must cause damage');
+  game.setCameraMode('orbit');
+  game.focusBuilding('all');
 });

@@ -1,4 +1,4 @@
-import {glassMaterial} from './architecture.js';
+import { glassMaterial } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 import { site } from './site.js';
 
@@ -59,8 +59,8 @@ function addNeighbor(scene, neighbor) {
   });
   geometry.rotateX(-Math.PI / 2);
   geometry.translate(0, neighbor.base, 0);
-  const facade=glassMaterial(neighbor.height>20?'#879eae':'#9db2b9',true);
-  const mesh = new THREE.Mesh(geometry, [materials.neighbor,facade]);
+  const facade = glassMaterial(neighbor.height > 20 ? '#879eae' : '#9db2b9', true);
+  const mesh = new THREE.Mesh(geometry, [materials.neighbor, facade]);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
@@ -70,9 +70,12 @@ function addNeighbor(scene, neighbor) {
   );
   scene.add(edges);
   // Rooftop equipment is illustrative, not surveyed.
-  if(neighbor.height>8){const xs=neighbor.outline.map(p=>p[0]),zs=neighbor.outline.map(p=>p[1]);
-    const cx=(Math.min(...xs)+Math.max(...xs))/2,cz=(Math.min(...zs)+Math.max(...zs))/2;
-    cube(scene,cx,neighbor.height+.8,cz,3,1.6,2,materials.concrete);
+  if (neighbor.height > 8) {
+    const xs = neighbor.outline.map((p) => p[0]),
+      zs = neighbor.outline.map((p) => p[1]);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2,
+      cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+    cube(scene, cx, neighbor.height + 0.8, cz, 3, 1.6, 2, materials.concrete);
   }
 }
 
@@ -105,15 +108,36 @@ function addRoad(scene, road) {
     );
     segment.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
     segment.castShadow = false;
-    if (['primary','primary_link','secondary','tertiary','residential'].includes(road.kind)) {
-      const sidewalk=cube(scene,(x1+x2)/2,y-.055,(z1+z2)/2,length+road.width,.18,road.width+1.5,materials.path);
-      sidewalk.rotation.y=segment.rotation.y;
-      sidewalk.castShadow=false;
-      const dx=(x2-x1)/length,dz=(z2-z1)/length;
-      if(length>1&&road.width>3)for(let offset=1;offset<length;offset+=4){
-        const stripe=cube(scene,x1+dx*offset,y+.16,z1+dz*offset,1.8,.015,.08,materials.trim);
-        stripe.rotation.y=segment.rotation.y;stripe.castShadow=false;
-      }
+    if (['primary', 'primary_link', 'secondary', 'tertiary', 'residential'].includes(road.kind)) {
+      const sidewalk = cube(
+        scene,
+        (x1 + x2) / 2,
+        y - 0.055,
+        (z1 + z2) / 2,
+        length + road.width,
+        0.18,
+        road.width + 1.5,
+        materials.path,
+      );
+      sidewalk.rotation.y = segment.rotation.y;
+      sidewalk.castShadow = false;
+      const dx = (x2 - x1) / length,
+        dz = (z2 - z1) / length;
+      if (length > 1 && road.width > 3)
+        for (let offset = 1; offset < length; offset += 4) {
+          const stripe = cube(
+            scene,
+            x1 + dx * offset,
+            y + 0.16,
+            z1 + dz * offset,
+            1.8,
+            0.015,
+            0.08,
+            materials.trim,
+          );
+          stripe.rotation.y = segment.rotation.y;
+          stripe.castShadow = false;
+        }
     }
   }
 }
@@ -126,11 +150,11 @@ export function buildScenery(scene) {
     ring = clipPolygon(ring, 1, -GROUND_SIZE / 2, true);
     ring = clipPolygon(ring, 1, GROUND_SIZE / 2, false);
     if (ring.length < 3) continue;
-    const shape = new THREE.Shape(ring.map(([x,z]) => new THREE.Vector2(x,-z)));
+    const shape = new THREE.Shape(ring.map(([x, z]) => new THREE.Vector2(x, -z)));
     const geometry = new THREE.ShapeGeometry(shape);
     geometry.rotateX(-Math.PI / 2);
     const surface = new THREE.Mesh(geometry, mat(area.kind === 'water' ? '#7dabb9' : '#809c78'));
-    surface.position.y = area.kind === 'water' ? -.22 : -.235;
+    surface.position.y = area.kind === 'water' ? -0.22 : -0.235;
     surface.receiveShadow = true;
     scene.add(surface);
   }

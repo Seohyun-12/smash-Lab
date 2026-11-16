@@ -1,4 +1,4 @@
-import {skyTexture} from './architecture.js';
+import { skyTexture } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 export function createGameScene(
   viewport,

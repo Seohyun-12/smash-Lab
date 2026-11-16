@@ -44,8 +44,12 @@ export function createUI() {
       button.setAttribute('aria-pressed', button.dataset.view === id);
     });
   }
-  function renderMode(mode){document.querySelectorAll('[data-mode]').forEach(button=>button.setAttribute('aria-pressed',button.dataset.mode===mode));}
-  return { toast, renderScore, renderWeapon, renderSound, renderBuilding, renderView,renderMode };
+  function renderMode(mode) {
+    document
+      .querySelectorAll('[data-mode]')
+      .forEach((button) => button.setAttribute('aria-pressed', button.dataset.mode === mode));
+  }
+  return { toast, renderScore, renderWeapon, renderSound, renderBuilding, renderView, renderMode };
 }
 
 export function bindControls({
@@ -66,7 +70,9 @@ export function bindControls({
   document
     .querySelectorAll('[data-view]')
     .forEach((button) => (button.onclick = () => focus(button.dataset.view)));
-  document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>mode(button.dataset.mode));
+  document
+    .querySelectorAll('[data-mode]')
+    .forEach((button) => (button.onclick = () => mode(button.dataset.mode)));
   $('#reset').onclick = reset;
   $('#home').onclick = home;
   $('#zoomIn').onclick = () => zoom(-7);

@@ -144,7 +144,10 @@ function impact(kind, hit, direction, floor, variant = 0, buildingId, directBloc
   const config = WEAPONS[kind];
   let count = 0;
   for (const o of blocks) {
-    if (o.userData.alive && (o===directBlock || affectedByWeapon(kind, o.position, hit, direction))) {
+    if (
+      o.userData.alive &&
+      (o === directBlock || affectedByWeapon(kind, o.position, hit, direction))
+    ) {
       detach(o, hit, config.power);
       if (kind === 'mallet') o.userData.velocity.y = -9;
       count++;
@@ -207,10 +210,10 @@ function attack(clientX, clientY) {
   nextAttack = now + config.cooldown * 1000;
   const variant = kind === 'cosmetics' ? containerIndex++ % 4 : 0;
   if (!config.animation) {
-    impact(kind, hit, direction, floor, variant, buildingId,hits[0].object);
+    impact(kind, hit, direction, floor, variant, buildingId, hits[0].object);
     return;
   }
-  effects.launch({ kind, hit, direction, floor, variant, buildingId,directBlock:hits[0].object });
+  effects.launch({ kind, hit, direction, floor, variant, buildingId, directBlock: hits[0].object });
 }
 
 function selectWeapon(w) {
@@ -244,9 +247,10 @@ bindControls({
   },
 });
 
-function setCameraMode(mode){
-  if(!['orbit','street','map'].includes(mode))return;
-  cameraMode=mode;focusBuilding(cameraView);
+function setCameraMode(mode) {
+  if (!['orbit', 'street', 'map'].includes(mode)) return;
+  cameraMode = mode;
+  focusBuilding(cameraView);
 }
 function focusBuilding(id = 'all') {
   cameraView = id;
@@ -269,12 +273,17 @@ function focusBuilding(id = 'all') {
     Math.max((width + depth * 0.35) / (2 * tan * camera.aspect), height / (2 * tan)) * 1.25 +
     depth * 0.65;
   distance = THREE.MathUtils.clamp(distance, 50, 250);
-  if(cameraMode==='map'){
-    yaw=0;pitch=1.54;
-    distance=THREE.MathUtils.clamp(Math.max(width/camera.aspect,depth)/(2*tan)*1.45+height,50,250);
-  }else if(cameraMode==='street'){
-    yaw=.1;
-    pitch=Math.asin((2.1-center.y)/distance);
+  if (cameraMode === 'map') {
+    yaw = 0;
+    pitch = 1.54;
+    distance = THREE.MathUtils.clamp(
+      (Math.max(width / camera.aspect, depth) / (2 * tan)) * 1.45 + height,
+      50,
+      250,
+    );
+  } else if (cameraMode === 'street') {
+    yaw = 0.1;
+    pitch = Math.asin((2.1 - center.y) / distance);
   }
   ui.renderView(id);
   ui.renderMode(cameraMode);
