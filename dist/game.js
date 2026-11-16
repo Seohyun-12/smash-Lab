@@ -1,3 +1,4 @@
+import {createUI,bindControls} from './ui.js';
 import {createGameScene} from './scene.js';
 import {createWeaponEffects} from './effects.js';
 import {stepDebris, stepParticles} from './physics.js';
@@ -5,7 +6,8 @@ import * as THREE from './vendor/three.module.js';
 import {building as B} from './model.js';
 import {mat,cube,buildScenery,buildTarget,createSignMaterial} from './building.js';
 import {WEAPONS,CONTAINERS,CONTAINER_COLORS,affectedByWeapon} from './weapons.js';
-const $=s=>document.querySelector(s), viewport=$('#viewport');
+const viewport=document.querySelector('#viewport');
+const ui=createUI();
 const {scene,camera,renderer}=createGameScene(viewport);
 buildScenery(scene,B);
 const target=new THREE.Group();scene.add(target);
@@ -21,10 +23,10 @@ function reset(){
  buildTarget(B,addBlock,signMat);
  initialCount=blocks.length;updateHud();toast('무기를 고르고 건물을 클릭하세요');
 }
-function updateHud(){const percentage=destroyed===initialCount?100:Math.min(99,Math.round(destroyed/initialCount*100));$('#score').textContent=String(points).padStart(5,'0');$('#percent').textContent=percentage+'%';$('#bar').style.width=percentage+'%';if(destroyed===initialCount&&!completed){completed=true;toast('100% 파괴 완료! 다시 세우고 한 판 더 ↗');}}
-let toastTimer;function toast(s){$('#toast').textContent=s;$('#toast').style.opacity=1;clearTimeout(toastTimer);if(!completed)toastTimer=setTimeout(()=>$('#toast').style.opacity=.45,3500);}
+function updateHud(){const percentage=destroyed===initialCount?100:Math.min(99,Math.round(destroyed/initialCount*100));ui.renderScore(points,percentage);if(destroyed===initialCount&&!completed){completed=true;toast('100% 파괴 완료! 다시 세우고 한 판 더 ↗');}}
+function toast(message){ui.toast(message,completed);}
 function detach(o,origin,power=1){if(!o.userData.alive)return;o.userData.alive=false;destroyed++;points+=10;const dir=o.position.clone().sub(origin).normalize();dir.y=Math.abs(dir.y)+.3;o.userData.velocity=dir.multiplyScalar((3+Math.random()*5)*power);o.userData.spin=new THREE.Vector3(Math.random()-.5,Math.random()-.5,Math.random()-.5).multiplyScalar(5);o.userData.age=0;debris.push(o);}
-function audio(kind=weapon){if(!sound)return;try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const osc=audioCtx.createOscillator(),g=audioCtx.createGain();osc.type=kind==='mallet'?'sine':kind==='ethanol'?'triangle':'sawtooth';osc.frequency.setValueAtTime(kind==='laser'?450:kind==='ethanol'?750:kind==='mallet'?150:100,audioCtx.currentTime);osc.frequency.exponentialRampToValueAtTime(kind==='ethanol'?200:25,audioCtx.currentTime+.22);g.gain.setValueAtTime(.08,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.25);osc.connect(g);g.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.27);}catch{sound=false;$('#sound').textContent='소리 사용 불가';}}
+function audio(kind=weapon){if(!sound)return;try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const osc=audioCtx.createOscillator(),g=audioCtx.createGain();osc.type=kind==='mallet'?'sine':kind==='ethanol'?'triangle':'sawtooth';osc.frequency.setValueAtTime(kind==='laser'?450:kind==='ethanol'?750:kind==='mallet'?150:100,audioCtx.currentTime);osc.frequency.exponentialRampToValueAtTime(kind==='ethanol'?200:25,audioCtx.currentTime+.22);g.gain.setValueAtTime(.08,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.25);osc.connect(g);g.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.27);}catch{sound=false;ui.renderSound(false,true);}}
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 const effects=createWeaponEffects({scene,camera,getParticles:()=>particles,onImpact:impact,toast});
 const actions=effects.actions;
@@ -53,16 +55,14 @@ function attack(clientX,clientY){
  effects.launch({kind,hit,direction,floor,variant});
 }
 
-function selectWeapon(w){if(!WEAPONS[w])return;weapon=w;document.querySelectorAll('.weapon').forEach(b=>{const active=b.dataset.weapon===w;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',active);});$('#weaponHint').textContent=WEAPONS[w].hint;toast(WEAPONS[w].name+' · '+WEAPONS[w].hint);}
-document.querySelectorAll('.weapon').forEach(b=>b.onclick=()=>selectWeapon(b.dataset.weapon));
-$('#reset').onclick=reset;$('#home').onclick=()=>{yaw=.32;pitch=.5;distance=75;};$('#zoomIn').onclick=()=>distance=Math.max(38,distance-7);$('#zoomOut').onclick=()=>distance=Math.min(125,distance+7);
-$('#sound').onclick=()=>{sound=!sound;$('#sound').textContent='소리 '+(sound?'ON':'OFF');$('#sound').setAttribute('aria-pressed',sound);if(sound)audio();};$('#info').onclick=()=>$('#details').showModal();
-window.addEventListener('keydown',e=>{if(e.target.closest('button,dialog,input,textarea,select')||e.repeat)return;const chosen=Object.entries(WEAPONS).find(([,v])=>v.key===e.key);if(chosen)selectWeapon(chosen[0]);if(e.key.toLowerCase()==='r')reset();});
-let drag=null;
-viewport.addEventListener('pointerdown',e=>{if(e.button!==0)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false};viewport.setPointerCapture(e.pointerId);});
-viewport.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6)drag.moved=true;if(drag.moved){yaw-=(e.clientX-drag.lastX)*.007;pitch=THREE.MathUtils.clamp(pitch+(e.clientY-drag.lastY)*.006,.12,1.1);}drag.lastX=e.clientX;drag.lastY=e.clientY;});
-viewport.addEventListener('pointerup',e=>{if(!drag||drag.id!==e.pointerId)return;if(!drag.moved)attack(e.clientX,e.clientY);drag=null;});viewport.addEventListener('pointercancel',()=>drag=null);viewport.addEventListener('lostpointercapture',()=>drag=null);
-viewport.addEventListener('wheel',e=>{e.preventDefault();distance=THREE.MathUtils.clamp(distance+e.deltaY*.045,38,125);},{passive:false});
+function selectWeapon(w){if(!WEAPONS[w])return;weapon=w;ui.renderWeapon(w);toast(WEAPONS[w].name+' · '+WEAPONS[w].hint);}
+function toggleSound(){sound=!sound;ui.renderSound(sound);if(sound)audio();}
+bindControls({viewport,attack,reset,selectWeapon,toggleSound,
+ home(){yaw=.32;pitch=.5;distance=75;},
+ zoom(delta){distance=THREE.MathUtils.clamp(distance+delta,38,125);},
+ orbit(dx,dy){yaw-=dx*.007;pitch=THREE.MathUtils.clamp(pitch+dy*.006,.12,1.1);},
+});
+
 function resize(){const {width,height}=viewport.getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe(viewport);
 reset();resize();
 let prev=performance.now();
