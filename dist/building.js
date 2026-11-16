@@ -1,4 +1,11 @@
-import { addPhotoDetails, addGlazedBoxes, addObservedSign, buildingFaces, cladding } from './facade.js';
+import { roofOpening, addRoofDetails } from './roof.js';
+import {
+  addPhotoDetails,
+  addGlazedBoxes,
+  addObservedSign,
+  buildingFaces,
+  cladding,
+} from './facade.js';
 import { glassMaterial } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 import { site } from './site.js';
@@ -179,20 +186,32 @@ export function buildScenery(scene) {
   }
 }
 
-export function createSignMaterial(text = 'INNOVALLEY',options={}) {
+export function createSignMaterial(text = 'INNOVALLEY', options = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
-  if(!options.transparent){ctx.fillStyle='#d9e4d3';ctx.fillRect(0,0,1024,128);}
-  ctx.fillStyle=options.transparent?'#f3f5f4':'#294b49';
+  if (!options.transparent) {
+    ctx.fillStyle = '#d9e4d3';
+    ctx.fillRect(0, 0, 1024, 128);
+  }
+  ctx.fillStyle = options.transparent ? '#f3f5f4' : '#294b49';
   ctx.font = 'bold 59px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(text,512,options.subtitle?56:85);
-  if(options.subtitle){ctx.font='bold 40px sans-serif';ctx.fillText(options.subtitle,512,111);}
+  ctx.fillText(text, 512, options.subtitle ? 56 : 85);
+  if (options.subtitle) {
+    ctx.font = 'bold 40px sans-serif';
+    ctx.fillText(options.subtitle, 512, 111);
+  }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshStandardMaterial({map:texture,roughness:.75,transparent:!!options.transparent,alphaTest:.1,side:THREE.DoubleSide});
+  return new THREE.MeshStandardMaterial({
+    map: texture,
+    roughness: 0.75,
+    transparent: !!options.transparent,
+    alphaTest: 0.1,
+    side: THREE.DoubleSide,
+  });
 }
 
 // Clip the footprint into independently breakable floor tiles, preserving slanted edges.
@@ -212,9 +231,21 @@ function clipPolygon(points, axis, bound, keepGreater) {
   return result;
 }
 
+function subtractOpening(ring, hole) {
+  if (!hole) return [ring];
+  let center = clipPolygon(ring, 0, hole.minX, true);
+  center = clipPolygon(center, 0, hole.maxX, false);
+  return [
+    clipPolygon(ring, 0, hole.minX, false),
+    clipPolygon(ring, 0, hole.maxX, true),
+    clipPolygon(center, 1, hole.minZ, false),
+    clipPolygon(center, 1, hole.maxZ, true),
+  ];
+}
+
 const prismCache = new Map();
-function floorTiles(outline) {
-  const key = JSON.stringify(outline);
+function floorTiles(outline, hole = null) {
+  const key = JSON.stringify([outline, hole]);
   if (prismCache.has(key)) return prismCache.get(key);
   const xs = outline.map((p) => p[0]),
     zs = outline.map((p) => p[1]);
@@ -225,22 +256,26 @@ function floorTiles(outline) {
       ring = clipPolygon(ring, 0, x + 4.5, false);
       ring = clipPolygon(ring, 1, z, true);
       ring = clipPolygon(ring, 1, z + 4.5, false);
-      if (ring.length < 3) continue;
-      const area =
-        Math.abs(
-          ring.reduce((sum, p, i) => {
-            const q = ring[(i + 1) % ring.length];
-            return sum + p[0] * q[1] - q[0] * p[1];
-          }, 0),
-        ) / 2;
-      if (area < 0.05) continue;
-      const cx = ring.reduce((sum, p) => sum + p[0], 0) / ring.length;
-      const cz = ring.reduce((sum, p) => sum + p[1], 0) / ring.length;
-      const shape = new THREE.Shape(ring.map(([px, pz]) => new THREE.Vector2(px - cx, -pz + cz)));
-      const geometry = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
-      geometry.rotateX(-Math.PI / 2);
-      geometry.translate(0, -0.5, 0);
-      tiles.push({ x: cx, z: cz, geometry });
+      for (const polygon of subtractOpening(ring, hole)) {
+        if (polygon.length < 3) continue;
+        const area =
+          Math.abs(
+            polygon.reduce((sum, p, i) => {
+              const q = polygon[(i + 1) % polygon.length];
+              return sum + p[0] * q[1] - q[0] * p[1];
+            }, 0),
+          ) / 2;
+        if (area < 0.05) continue;
+        const cx = polygon.reduce((sum, p) => sum + p[0], 0) / polygon.length;
+        const cz = polygon.reduce((sum, p) => sum + p[1], 0) / polygon.length;
+        const shape = new THREE.Shape(
+          polygon.map(([px, pz]) => new THREE.Vector2(px - cx, -pz + cz)),
+        );
+        const geometry = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
+        geometry.rotateX(-Math.PI / 2);
+        geometry.translate(0, -0.5, 0);
+        tiles.push({ x: cx, z: cz, geometry });
+      }
     }
   }
   prismCache.set(key, tiles);
@@ -250,6 +285,8 @@ function floorTiles(outline) {
 // Keep each piece's position in the site frame so hit tests, fragments and both targets agree.
 export function buildTarget(B, addBlock, signMaterial) {
   const tiles = floorTiles(B.outline);
+  const opening = roofOpening(B);
+  const openTiles = opening ? floorTiles(B.outline, opening) : tiles;
   const faces = buildingFaces(B);
   const framedSides = B.exterior?.frameSides ?? ['-z'];
   const meta = { buildingId: B.id };
@@ -290,16 +327,17 @@ export function buildTarget(B, addBlock, signMaterial) {
         mesh.rotation.y = -Math.atan2(dz, dx);
       }
     }
-    for (const tile of tiles)
+    for (const tile of opening && floor > opening.minFloor ? openTiles : tiles)
       addBlock(tile.x, 0.5 + floor * B.floorHeight, tile.z, 1, 0.22, 1, materials.concrete, floor, {
         ...meta,
         geometry: tile.geometry,
       });
   }
-  for (const tile of tiles)
+  for (const tile of openTiles)
     addBlock(tile.x, B.height + 0.5, tile.z, 1, 0.32, 1, materials.trim, B.floors - 1, {
       ...meta,
       geometry: tile.geometry,
+      role: 'roof-tile',
     });
   // Top and end trims are segmented so the full outline remains destructible.
   for (let edge = 0; edge < B.outline.length; edge++) {
@@ -327,6 +365,7 @@ export function buildTarget(B, addBlock, signMaterial) {
     }
   }
   addPhotoDetails(B, addBlock, materials);
-  addGlazedBoxes(B,addBlock,materials);
-  addObservedSign(B,addBlock,signMaterial);
+  addGlazedBoxes(B, addBlock, materials);
+  addRoofDetails(B, addBlock, materials);
+  addObservedSign(B, addBlock, signMaterial);
 }

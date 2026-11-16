@@ -369,30 +369,107 @@ test('matching facade material settings share GPU resources across rebuilds', as
   assert.equal(first, glassMaterial('#6f9fb4', false, { frameColor: '#4a4f52' }));
 });
 
-test('projecting glazed boxes and colored strips belong only to the documented road face', () => {
+test('F courtyard is open through the roof while lower floors remain intact', async () => {
   rebuild();
-  const boxes=game.blocks.filter(b=>b.userData.role==='glass-box');
-  const accents=game.blocks.filter(b=>b.userData.role==='accent-band');
-  assert(boxes.length>0);
-  assert.equal(accents.length,3);
-  for(const piece of [...boxes,...accents]){
-    assert.equal(piece.userData.buildingId,'E');
-    assert.equal(piece.userData.face,'+z');
-    assert(piece.position.z>9,'the projections must stand in front of the road face');
-  }
-  const count=game.blocks.length;
-  game.detach(boxes[0],boxes[0].position.clone());
-  game.reset();
-  assert.equal(game.blocks.length,count);
+  const { buildings } = await import('../dist/model.js');
+  const { roofOpening } = await import('../dist/roof.js');
+  const f = buildings.find((b) => b.id === 'F'),
+    hole = roofOpening(f);
+  const ray = new THREE.Raycaster(
+    new THREE.Vector3((hole.minX + hole.maxX) / 2, f.height + 20, (hole.minZ + hole.maxZ) / 2),
+    new THREE.Vector3(0, -1, 0),
+  );
+  const hits = ray.intersectObjects(game.blocks.filter((b) => b.userData.buildingId === 'F'));
+  assert(hits.length > 0, 'atrium must retain a lower floor');
+  assert(
+    hits[0].point.y < f.height - f.floorHeight * 3,
+    'roof and upper floor plates must not cover the opening',
+  );
+  assert.equal(hits[0].object.userData.floor, hole.minFloor);
 });
 
-test('observed signs use the documented face and height',async()=>{
+test('roof tile area excludes the documented F opening', async () => {
   rebuild();
-  const e=game.blocks.find(b=>b.userData.role==='innovalley-sign');
-  const f=game.blocks.find(b=>b.userData.role==='cosmax-sign');
-  assert.equal(e.userData.buildingId,'E');assert.equal(e.userData.face,'+z');assert.equal(e.userData.floor,9);
-  assert.equal(f.userData.buildingId,'F');assert.equal(f.userData.face,'-x');assert.equal(f.userData.floor,1);
-  const {buildings}=await import('../dist/model.js');
-  assert(e.position.y>buildings[0].height*.9);
-  assert(f.position.y<buildings[1].height*.25);
+  const { buildings } = await import('../dist/model.js');
+  const { roofOpening } = await import('../dist/roof.js');
+  for (const building of buildings) {
+    const hole = roofOpening(building);
+    const footprint =
+      Math.abs(
+        building.outline.reduce((sum, p, i) => {
+          const q = building.outline[(i + 1) % building.outline.length];
+          return sum + p[0] * q[1] - q[0] * p[1];
+        }, 0),
+      ) / 2;
+    let area = 0;
+    for (const tile of game.blocks.filter(
+      (b) => b.userData.buildingId === building.id && b.userData.role === 'roof-tile',
+    )) {
+      const positions = tile.geometry.attributes.position,
+        normals = tile.geometry.attributes.normal;
+      for (let i = 0; i < positions.count; i += 3) {
+        if (normals.getY(i) < 0.9) continue;
+        const a = new THREE.Vector3().fromBufferAttribute(positions, i),
+          b = new THREE.Vector3().fromBufferAttribute(positions, i + 1),
+          c = new THREE.Vector3().fromBufferAttribute(positions, i + 2);
+        area += b.sub(a).cross(c.sub(a)).length() / 2;
+      }
+    }
+    const expected = footprint - (hole ? (hole.maxX - hole.minX) * (hole.maxZ - hole.minZ) : 0);
+    assert(
+      Math.abs(area - expected) < 0.15,
+      building.id + ' roof must retain the footprint minus its opening',
+    );
+  }
+});
+
+test('E and F retain different observed roof equipment', () => {
+  rebuild();
+  assert(
+    game.blocks.some((b) => b.userData.buildingId === 'E' && b.userData.role === 'roof-garden'),
+  );
+  const row = game.blocks.filter(
+    (b) => b.userData.buildingId === 'E' && b.userData.role === 'roof-equipment-row',
+  );
+  assert.equal(new Set(row.map((b) => b.position.x)).size, 6);
+  assert.equal(
+    game.blocks.filter((b) => b.userData.buildingId === 'F' && b.userData.role === 'cooling-fan')
+      .length,
+    2,
+  );
+  assert(
+    game.blocks.some((b) => b.userData.buildingId === 'F' && b.userData.role === 'courtyard-wall'),
+  );
+});
+
+test('projecting glazed boxes and colored strips belong only to the documented road face', () => {
+  rebuild();
+  const boxes = game.blocks.filter((b) => b.userData.role === 'glass-box');
+  const accents = game.blocks.filter((b) => b.userData.role === 'accent-band');
+  assert(boxes.length > 0);
+  assert.equal(accents.length, 3);
+  for (const piece of [...boxes, ...accents]) {
+    assert.equal(piece.userData.buildingId, 'E');
+    assert.equal(piece.userData.face, '+z');
+    assert(piece.position.z > 9, 'the projections must stand in front of the road face');
+  }
+  const count = game.blocks.length;
+  game.detach(boxes[0], boxes[0].position.clone());
+  game.reset();
+  assert.equal(game.blocks.length, count);
+});
+
+test('observed signs use the documented face and height', async () => {
+  rebuild();
+  const e = game.blocks.find((b) => b.userData.role === 'innovalley-sign');
+  const f = game.blocks.find((b) => b.userData.role === 'cosmax-sign');
+  assert.equal(e.userData.buildingId, 'E');
+  assert.equal(e.userData.face, '+z');
+  assert.equal(e.userData.floor, 9);
+  assert.equal(f.userData.buildingId, 'F');
+  assert.equal(f.userData.face, '-x');
+  assert.equal(f.userData.floor, 1);
+  const { buildings } = await import('../dist/model.js');
+  assert(e.position.y > buildings[0].height * 0.9);
+  assert(f.position.y < buildings[1].height * 0.25);
 });

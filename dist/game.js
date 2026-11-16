@@ -35,13 +35,19 @@ const center = new THREE.Vector3(13, 10, 0);
 let cameraView = 'all';
 let cameraMode = 'orbit';
 const signMaterials = new Map(
-  buildings.map((b)=>[b.id,createSignMaterial(b.exterior.signs[0].text,{subtitle:b.exterior.signs[0].subtitle,transparent:true})]),
+  buildings.map((b) => [
+    b.id,
+    createSignMaterial(b.exterior.signs[0].text, {
+      subtitle: b.exterior.signs[0].subtitle,
+      transparent: true,
+    }),
+  ]),
 );
 function addBlock(x, y, z, w, h, d, m, floor, details = {}) {
   const o = cube(target, x, y, z, w, h, d, m);
-  const {geometry,...metadata}=details;
-  if(geometry)o.geometry=geometry;
-  o.userData={...metadata,alive:true,floor};
+  const { geometry, ...metadata } = details;
+  if (geometry) o.geometry = geometry;
+  o.userData = { ...metadata, alive: true, floor };
   blocks.push(o);
   return o;
 }
