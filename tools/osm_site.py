@@ -86,7 +86,7 @@ def generate(data):
             'outline': outline,
         })
 
-    neighbors, roads = [], []
+    neighbors, roads, land_areas = [], [], []
     for way in ways.values():
         if way['id'] in TARGETS.values():
             continue
@@ -97,6 +97,12 @@ def generate(data):
         positions = [game(p) for p in coords]
         mx = sum(p[0] for p in positions) / len(positions) / scale
         mz = sum(p[1] for p in positions) / len(positions) / scale
+        land_kind = ('water' if tags.get('natural') == 'water' else
+                     'park' if tags.get('leisure') == 'park' else
+                     'grass' if tags.get('landuse') == 'grass' else None)
+        if land_kind and way['nodes'][0] == way['nodes'][-1]:
+            land_areas.append({'osmWay': way['id'], 'name': tags.get('name', ''),
+                               'kind': land_kind, 'outline': positions[:-1]})
         if 'building' in tags:
             if math.hypot(mx, mz) > RADIUS_M or way['nodes'][0] != way['nodes'][-1]:
                 continue
@@ -109,7 +115,9 @@ def generate(data):
                               'heightEstimated': 'height' not in tags, 'outline': positions[:-1]})
         elif tags.get('highway') in ROAD_WIDTH_M:
             roads.append({'name': tags.get('name', ''), 'kind': tags['highway'],
-                          'width': round(ROAD_WIDTH_M[tags['highway']] * scale, 3), 'path': positions})
+                          'width': round(ROAD_WIDTH_M[tags['highway']] * scale, 3), 'path': positions,
+                          'tunnel': tags.get('tunnel') in ('yes', 'building_passage'),
+                          'bridge': tags.get('bridge') == 'yes'})
 
     e = targets[0]
     return {
@@ -120,7 +128,7 @@ def generate(data):
         'name': e['name'], 'levels': e['levels'], 'heightMeters': e['heightMeters'],
         'footprintMeters': e['footprintMeters'], 'scale': scale, 'footprint': e['outline'],
         'targets': targets, 'neighbors': sorted(neighbors, key=lambda n: (-n['height'], n['osmWay'])),
-        'roads': roads,
+        'roads': roads, 'landAreas': land_areas,
     }
 
 

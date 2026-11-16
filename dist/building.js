@@ -77,6 +77,7 @@ function addNeighbor(scene, neighbor) {
 }
 
 function addRoad(scene, road) {
+  if (road.tunnel) return;
   const half = GROUND_SIZE / 2;
   const y = -0.25 + (ROAD_LIFT[road.kind] ?? 0);
   const surface =
@@ -119,6 +120,20 @@ function addRoad(scene, road) {
 
 export function buildScenery(scene) {
   cube(scene, 12, -1, 0, GROUND_SIZE, 1.5, GROUND_SIZE, mat('#a1ae9d'));
+  for (const area of site.landAreas) {
+    let ring = clipPolygon(area.outline, 0, -GROUND_SIZE / 2, true);
+    ring = clipPolygon(ring, 0, GROUND_SIZE / 2, false);
+    ring = clipPolygon(ring, 1, -GROUND_SIZE / 2, true);
+    ring = clipPolygon(ring, 1, GROUND_SIZE / 2, false);
+    if (ring.length < 3) continue;
+    const shape = new THREE.Shape(ring.map(([x,z]) => new THREE.Vector2(x,-z)));
+    const geometry = new THREE.ShapeGeometry(shape);
+    geometry.rotateX(-Math.PI / 2);
+    const surface = new THREE.Mesh(geometry, mat(area.kind === 'water' ? '#7dabb9' : '#809c78'));
+    surface.position.y = area.kind === 'water' ? -.22 : -.235;
+    surface.receiveShadow = true;
+    scene.add(surface);
+  }
   cube(scene, 12, -0.13, 0, 66, 0.6, 32, mat('#c2c4bd'));
   for (const road of site.roads) addRoad(scene, road);
   for (const neighbor of site.neighbors) addNeighbor(scene, neighbor);
