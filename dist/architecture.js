@@ -1,4 +1,5 @@
 import * as THREE from './vendor/three.module.js';
+import { RGBELoader } from './vendor/RGBELoader.js';
 
 // Procedural materials, not copied street-view images. Pattern details are illustrative.
 function windowTexture(color) {
@@ -6,24 +7,26 @@ function windowTexture(color) {
   canvas.width = 128;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
-  const sky = ctx.createLinearGradient(0, 0, 128, 256);
-  sky.addColorStop(0, '#d8e9ef');
-  sky.addColorStop(0.35, color);
-  sky.addColorStop(1, '#426879');
-  ctx.fillStyle = sky;
+  // Keep the base restrained: photographed HDR lighting supplies the reflection.
+  ctx.fillStyle = color;
   ctx.fillRect(0, 0, 128, 256);
-  ctx.fillStyle = '#d8e5e6';
-  ctx.globalAlpha = 0.25;
-  for (let i = 0; i < 9; i++) ctx.fillRect(8, 20 + i * 5, 111, 2);
-  ctx.globalAlpha = 0.16;
-  ctx.fillStyle = '#eef7f8';
-  ctx.fillRect(70, 0, 20, 256);
+  ctx.fillStyle = '#1d3541';
+  ctx.globalAlpha = 0.3;
+  ctx.fillRect(6, 7, 116, 242);
+  ctx.fillStyle = '#cbd2cd';
+  ctx.globalAlpha = 0.22;
+  for (let i = 0; i < 18; i++) ctx.fillRect(8, 20 + i * 4, 111, 1);
+  ctx.fillStyle = '#162e37';
+  ctx.globalAlpha = 0.4;
+  ctx.fillRect(8, 190, 110, 54);
   ctx.fillStyle = '#263c48';
   ctx.globalAlpha = 1;
   ctx.fillRect(0, 0, 3, 256);
   ctx.fillRect(125, 0, 3, 256);
   ctx.fillRect(0, 0, 128, 5);
   ctx.fillRect(0, 249, 128, 7);
+  ctx.fillRect(0, 191, 128, 3);
+  ctx.fillRect(63, 0, 2, 256);
   ctx.fillStyle = '#bac9ce';
   ctx.fillRect(3, 0, 2, 256);
   const texture = new THREE.CanvasTexture(canvas);
@@ -35,13 +38,58 @@ function windowTexture(color) {
 export function glassMaterial(color, tiled = false) {
   const texture = windowTexture(color);
   if (tiled) texture.repeat.set(0.55, 0.42);
+  return new THREE.MeshPhysicalMaterial({
+    map: texture,
+    color: '#a8c3ca',
+    roughness: 0.16,
+    metalness: 0.25,
+    clearcoat: 1,
+    clearcoatRoughness: 0.1,
+    envMapIntensity: 1.15,
+  });
+}
+
+export function claddingMaterial() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#d2d4d3';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = '#b7bdbe';
+  for (let y = 0; y < 256; y += 32) ctx.fillRect(0, y, 256, 1);
+  ctx.fillRect(0, 0, 1, 256);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshStandardMaterial({
     map: texture,
-    color: '#d8e4e8',
-    roughness: 0.3,
-    metalness: 0.3,
-    envMapIntensity: 0.65,
+    color: '#dfdfdc',
+    metalness: 0.35,
+    roughness: 0.42,
   });
+}
+
+export function loadPhotographicSky(scene, renderer) {
+  // The CPU-only test renderer has no GPU texture support.
+  if (!renderer.isWebGLRenderer) return;
+  scene.userData.environmentStatus = 'loading';
+  new RGBELoader().load(
+    new URL('./assets/cloudy-sky-1k.hdr', import.meta.url).href,
+    (texture) => {
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      const fallback = scene.background;
+      scene.background = texture;
+      scene.environment = texture;
+      scene.backgroundBlurriness = 0.025;
+      scene.backgroundIntensity = 0.8;
+      scene.environmentIntensity = 0.75;
+      scene.userData.environmentStatus = 'photographic';
+      fallback?.dispose();
+    },
+    undefined,
+    () => {
+      scene.userData.environmentStatus = 'fallback';
+    },
+  );
 }
 
 export function skyTexture() {

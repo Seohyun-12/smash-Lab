@@ -1,4 +1,4 @@
-import { skyTexture } from './architecture.js';
+import { skyTexture, loadPhotographicSky } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 export function createGameScene(
   viewport,
@@ -21,10 +21,12 @@ export function createGameScene(
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.92;
   viewport.append(renderer.domElement);
-  scene.add(new THREE.HemisphereLight(0xe3f1ff, 0x85877d, 1.8));
-  const sun = new THREE.DirectionalLight(0xfff5e6, 2.5);
-  sun.position.set(-35, 70, 25);
+  scene.add(new THREE.HemisphereLight(0xe3f1ff, 0x77756d, 1.05));
+  const sun = new THREE.DirectionalLight(0xfff5e6, 2.8);
+  sun.position.set(20, 65, -40);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, {
@@ -37,6 +39,7 @@ export function createGameScene(
   });
   sun.shadow.bias = -0.0005;
   scene.add(sun);
+  loadPhotographicSky(scene, renderer);
 
   return { scene, camera, renderer };
 }
