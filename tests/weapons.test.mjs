@@ -32,7 +32,7 @@ globalThis.document = {
   createElement: () => ({
     width: 0,
     height: 0,
-    getContext: () => ({ fillRect() {}, fillText() {} }),
+    getContext: () => ({ fillRect() {}, fillText() {}, createLinearGradient(){return {addColorStop(){}};} }),
   }),
 };
 globalThis.window = { addEventListener() {} };

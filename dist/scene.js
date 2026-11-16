@@ -1,3 +1,4 @@
+import {skyTexture} from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 export function createGameScene(
   viewport,
@@ -5,8 +6,9 @@ export function createGameScene(
     new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }),
 ) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#c6d5c9');
-  scene.fog = new THREE.Fog('#c6d5c9', 180, 420);
+  scene.background = skyTexture();
+  scene.environment = scene.background;
+  scene.fog = new THREE.Fog('#d1dce1', 180, 420);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 550);
   let renderer;
   try {
@@ -20,8 +22,8 @@ export function createGameScene(
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   viewport.append(renderer.domElement);
-  scene.add(new THREE.HemisphereLight(0xf5fff0, 0x536b61, 2.6));
-  const sun = new THREE.DirectionalLight(0xfff3cf, 3);
+  scene.add(new THREE.HemisphereLight(0xe3f1ff, 0x85877d, 1.8));
+  const sun = new THREE.DirectionalLight(0xfff5e6, 2.5);
   sun.position.set(-35, 70, 25);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);

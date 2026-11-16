@@ -1,3 +1,4 @@
+import {glassMaterial} from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 import { site } from './site.js';
 
@@ -11,17 +12,17 @@ export function mat(color, roughness = 0.8) {
 export const materials = {
   concrete: mat('#b7c4ba'),
   dark: mat('#354f52'),
-  glass: mat('#618b8a', 0.3),
-  lightGlass: mat('#82a4a0', 0.35),
+  glass: glassMaterial('#8baebd'),
+  lightGlass: glassMaterial('#a3bdc6'),
   trim: mat('#d5dbce'),
-  road: mat('#78918a'),
+  road: mat('#626b70'),
   leaf: mat('#648a60'),
   bark: mat('#6c7964'),
   car: mat('#e3d9b7'),
-  neighbor: mat('#9eb2a7'),
+  neighbor: mat('#bec3c2'),
   neighborEdge: new THREE.LineBasicMaterial({ color: '#7f9b94' }),
   cycleway: mat('#8fa79a'),
-  path: mat('#c4cfc0'),
+  path: mat('#c8c9c4'),
 };
 
 const box = new THREE.BoxGeometry(1, 1, 1);
@@ -58,7 +59,8 @@ function addNeighbor(scene, neighbor) {
   });
   geometry.rotateX(-Math.PI / 2);
   geometry.translate(0, neighbor.base, 0);
-  const mesh = new THREE.Mesh(geometry, materials.neighbor);
+  const facade=glassMaterial(neighbor.height>20?'#879eae':'#9db2b9',true);
+  const mesh = new THREE.Mesh(geometry, [materials.neighbor,facade]);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
@@ -67,6 +69,11 @@ function addNeighbor(scene, neighbor) {
     materials.neighborEdge,
   );
   scene.add(edges);
+  // Rooftop equipment is illustrative, not surveyed.
+  if(neighbor.height>8){const xs=neighbor.outline.map(p=>p[0]),zs=neighbor.outline.map(p=>p[1]);
+    const cx=(Math.min(...xs)+Math.max(...xs))/2,cz=(Math.min(...zs)+Math.max(...zs))/2;
+    cube(scene,cx,neighbor.height+.8,cz,3,1.6,2,materials.concrete);
+  }
 }
 
 function addRoad(scene, road) {
@@ -97,12 +104,22 @@ function addRoad(scene, road) {
     );
     segment.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
     segment.castShadow = false;
+    if (['primary','primary_link','secondary','tertiary','residential'].includes(road.kind)) {
+      const sidewalk=cube(scene,(x1+x2)/2,y-.055,(z1+z2)/2,length+road.width,.18,road.width+1.5,materials.path);
+      sidewalk.rotation.y=segment.rotation.y;
+      sidewalk.castShadow=false;
+      const dx=(x2-x1)/length,dz=(z2-z1)/length;
+      if(length>1&&road.width>3)for(let offset=1;offset<length;offset+=4){
+        const stripe=cube(scene,x1+dx*offset,y+.16,z1+dz*offset,1.8,.015,.08,materials.trim);
+        stripe.rotation.y=segment.rotation.y;stripe.castShadow=false;
+      }
+    }
   }
 }
 
 export function buildScenery(scene) {
-  cube(scene, 12, -1, 0, GROUND_SIZE, 1.5, GROUND_SIZE, mat('#a5bca6'));
-  cube(scene, 12, -0.13, 0, 66, 0.6, 32, mat('#b7c9b3'));
+  cube(scene, 12, -1, 0, GROUND_SIZE, 1.5, GROUND_SIZE, mat('#a1ae9d'));
+  cube(scene, 12, -0.13, 0, 66, 0.6, 32, mat('#c2c4bd'));
   for (const road of site.roads) addRoad(scene, road);
   for (const neighbor of site.neighbors) addNeighbor(scene, neighbor);
 
