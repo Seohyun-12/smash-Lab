@@ -385,3 +385,14 @@ test('projecting glazed boxes and colored strips belong only to the documented r
   game.reset();
   assert.equal(game.blocks.length,count);
 });
+
+test('observed signs use the documented face and height',async()=>{
+  rebuild();
+  const e=game.blocks.find(b=>b.userData.role==='innovalley-sign');
+  const f=game.blocks.find(b=>b.userData.role==='cosmax-sign');
+  assert.equal(e.userData.buildingId,'E');assert.equal(e.userData.face,'+z');assert.equal(e.userData.floor,9);
+  assert.equal(f.userData.buildingId,'F');assert.equal(f.userData.face,'-x');assert.equal(f.userData.floor,1);
+  const {buildings}=await import('../dist/model.js');
+  assert(e.position.y>buildings[0].height*.9);
+  assert(f.position.y<buildings[1].height*.25);
+});

@@ -35,7 +35,7 @@ const center = new THREE.Vector3(13, 10, 0);
 let cameraView = 'all';
 let cameraMode = 'orbit';
 const signMaterials = new Map(
-  buildings.map((b) => [b.id, createSignMaterial('INNOVALLEY  /  ' + b.id)]),
+  buildings.map((b)=>[b.id,createSignMaterial(b.exterior.signs[0].text,{subtitle:b.exterior.signs[0].subtitle,transparent:true})]),
 );
 function addBlock(x, y, z, w, h, d, m, floor, details = {}) {
   const o = cube(target, x, y, z, w, h, d, m);

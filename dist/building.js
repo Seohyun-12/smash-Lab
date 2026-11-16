@@ -1,4 +1,4 @@
-import { addPhotoDetails, addGlazedBoxes, buildingFaces, cladding } from './facade.js';
+import { addPhotoDetails, addGlazedBoxes, addObservedSign, buildingFaces, cladding } from './facade.js';
 import { glassMaterial } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 import { site } from './site.js';
@@ -179,20 +179,20 @@ export function buildScenery(scene) {
   }
 }
 
-export function createSignMaterial(text = 'INNOVALLEY  /  E') {
+export function createSignMaterial(text = 'INNOVALLEY',options={}) {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#d9e4d3';
-  ctx.fillRect(0, 0, 1024, 128);
-  ctx.fillStyle = '#294b49';
+  if(!options.transparent){ctx.fillStyle='#d9e4d3';ctx.fillRect(0,0,1024,128);}
+  ctx.fillStyle=options.transparent?'#f3f5f4':'#294b49';
   ctx.font = 'bold 59px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(text, 512, 85);
+  ctx.fillText(text,512,options.subtitle?56:85);
+  if(options.subtitle){ctx.font='bold 40px sans-serif';ctx.fillText(options.subtitle,512,111);}
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 });
+  return new THREE.MeshStandardMaterial({map:texture,roughness:.75,transparent:!!options.transparent,alphaTest:.1,side:THREE.DoubleSide});
 }
 
 // Clip the footprint into independently breakable floor tiles, preserving slanted edges.
@@ -328,16 +328,5 @@ export function buildTarget(B, addBlock, signMaterial) {
   }
   addPhotoDetails(B, addBlock, materials);
   addGlazedBoxes(B,addBlock,materials);
-  const frontZ = Math.max(...B.outline.map((p) => p[1]));
-  addBlock(
-    B.center[0],
-    3.5,
-    frontZ + 0.3,
-    Math.min(10, B.footprintMeters[0] * site.scale * 0.7),
-    1.2,
-    0.2,
-    signMaterial,
-    1,
-    meta,
-  );
+  addObservedSign(B,addBlock,signMaterial);
 }

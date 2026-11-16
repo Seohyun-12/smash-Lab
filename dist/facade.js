@@ -17,6 +17,12 @@ const roundGlass = new THREE.MeshPhysicalMaterial({
 });
 const circle = new THREE.CircleGeometry(1, 32);
 const ring = new THREE.TorusGeometry(1, 0.065, 8, 32);
+const signPlane = new THREE.PlaneGeometry(1,1);
+const colorMaterials=new Map();
+function colorMaterial(color){
+  if(!colorMaterials.has(color))colorMaterials.set(color,new THREE.MeshStandardMaterial({color,metalness:.2,roughness:.4}));
+  return colorMaterials.get(color);
+}
 
 export function buildingFaces(building) {
   const area = building.outline.reduce((sum, p, i) => {
@@ -127,9 +133,29 @@ export function addGlazedBoxes(building,addBlock,materials) {
     for(const offset of [-box.width/2,box.width/2])piece(along+offset,base+height/2,.09,height+.1,.12,silver,box.floor,box.depth+.35,meta);
     const lineWidth=Math.min(box.length,face.length-along-box.width/2-.6);
     if(lineWidth>0){
-      const accent=new THREE.MeshStandardMaterial({color:box.accent,metalness:.2,roughness:.4});
+      const accent=colorMaterial(box.accent);
       piece(along+box.width/2+lineWidth/2,base+.15,lineWidth,.14,.16,accent,box.floor,.44,{role:'accent-band'});
     }
+  }
+}
+
+export function addObservedSign(building,addBlock,signMaterial){
+  for(const sign of building.exterior?.signs??[]){
+    const face=faceFor(building,sign.side);
+    const piece=facadePieceBuilder(building,face,addBlock);
+    let along=face.length*sign.u;
+    if(sign.side.endsWith('z')&&face.ux<0)along=face.length*(1-sign.u);
+    if(sign.role==='cosmax-sign'){
+      const halfWidth=1.25;
+      along=face.uz<0?face.length-halfWidth:halfWidth;
+    }
+    const y=.5+(sign.floor+.5)*building.floorHeight;
+    const width=building.id==='E'?5.2:2.35;
+    const height=building.id==='E'?1.35:.55;
+    const mesh=piece(along,y,width,height,1,signMaterial,sign.floor,.6,{geometry:signPlane,role:sign.role});
+    mesh.rotation.y=Math.atan2(face.nx,face.nz);
+    const logo=piece(along+width/2+.17,y,.14,.18,.14,colorMaterial('#ca2e3b'),sign.floor,.61,{geometry:ring,role:'sign-logo'});
+    logo.rotation.y=mesh.rotation.y;
   }
 }
 
