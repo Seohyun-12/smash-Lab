@@ -57,6 +57,7 @@ for (const path of [
   'effects.js',
   'scene.js',
   'ui.js',
+  'view.js',
 ])
   src = src.replace(
     JSON.stringify('./' + path).replaceAll('"', "'"),
@@ -299,4 +300,29 @@ test('only the five requested tools remain with consecutive shortcuts', () => {
     Object.values(WEAPONS).map((w) => w.key),
     ['1', '2', '3', '4', '5'],
   );
+});
+
+test('home view places Space Park before both buildings on wide and phone screens', async () => {
+  const { parkOverview, parkOutline, parkFacingYaw } = await import('../dist/view.js');
+  const { buildings } = await import('../dist/model.js');
+  for (const aspect of [1200 / 650, 390 / 510]) {
+    const view = parkOverview(aspect, 38);
+    const camera = new THREE.PerspectiveCamera(38, aspect, 0.1, 550);
+    camera.position.set(
+      view.center[0] + Math.sin(view.yaw) * Math.cos(view.pitch) * view.distance,
+      view.center[1] + Math.sin(view.pitch) * view.distance,
+      view.center[2] + Math.cos(view.yaw) * Math.cos(view.pitch) * view.distance,
+    );
+    camera.lookAt(new THREE.Vector3(...view.center));
+    camera.updateMatrixWorld(true);
+    const points = [
+      ...parkOutline.map(([x, z]) => [x, 0, z]),
+      ...buildings.flatMap((b) => b.outline.map(([x, z]) => [x, b.height, z])),
+    ];
+    for (const point of points) {
+      const ndc = new THREE.Vector3(...point).project(camera);
+      assert(Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1, 'park and roofs must fit');
+    }
+    assert(Math.cos(parkFacingYaw) < 0, 'camera must be on the park side of the buildings');
+  }
 });

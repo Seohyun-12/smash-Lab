@@ -1,3 +1,4 @@
+import { parkFacingYaw, parkOverview } from './view.js';
 import { createUI, bindControls } from './ui.js';
 import { createGameScene } from './scene.js';
 import { createWeaponEffects } from './effects.js';
@@ -27,7 +28,7 @@ let blocks = [],
   completed = false;
 let nextAttack = 0,
   containerIndex = 0;
-let yaw = 0.32,
+let yaw = parkFacingYaw,
   pitch = 0.5,
   distance = 112;
 const center = new THREE.Vector3(13, 10, 0);
@@ -233,6 +234,7 @@ bindControls({
   selectWeapon,
   toggleSound,
   home() {
+    cameraMode = 'orbit';
     focusBuilding('all');
   },
   focus: focusBuilding,
@@ -265,7 +267,7 @@ function focusBuilding(id = 'all') {
     height * 0.45,
     (Math.min(...zs) + Math.max(...zs)) / 2,
   );
-  yaw = 0.32;
+  yaw = parkFacingYaw;
   pitch = 0.46;
   const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   distance =
@@ -281,8 +283,15 @@ function focusBuilding(id = 'all') {
       250,
     );
   } else if (cameraMode === 'street') {
-    yaw = 0.1;
+    yaw = parkFacingYaw;
     pitch = Math.asin((2.1 - center.y) / distance);
+  }
+  if (id === 'all' && cameraMode === 'orbit') {
+    const overview = parkOverview(camera.aspect, camera.fov);
+    center.fromArray(overview.center);
+    yaw = overview.yaw;
+    pitch = overview.pitch;
+    distance = overview.distance;
   }
   ui.renderView(id);
   ui.renderMode(cameraMode);
