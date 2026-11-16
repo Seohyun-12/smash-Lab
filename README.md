@@ -1,38 +1,82 @@
-# 판교이노밸리 E동 — SMASH LAB
+# 판교이노밸리 E·F동 — SMASH LAB
 
-Buildless Three.js single-player destruction prototype. Serve `dist/` via HTTP.
+Three.js로 만든 브라우저용 건물 파괴 게임입니다. E동과 F동을 같은 실제 지도 좌표계에 배치하고 각각 부술 수 있습니다. 별도 빌드나 게임 서버는 필요하지 않습니다.
 
-Controls: click/tap to attack; drag to orbit; wheel or +/- buttons to zoom; 1–8 choose a tool; R rebuilds. Sound is opt-in. No backend required.
+## 로컬 실행
 
-## Tools
+```sh
+python3 -m http.server 8787 --directory dist --bind 127.0.0.1
+```
 
-| Key | Tool | Behavior |
+http://127.0.0.1:8787 을 엽니다. 파일을 직접 더블클릭하는 방식 대신 HTTP로 실행합니다.
+
+- 클릭/터치: 공격. 드래그: 회전. 스크롤 또는 +/-: 확대/축소.
+- E동/F동/전체 버튼: 건물에 맞춘 시점. 입체/거리/지도: 동일한 게임 공간을 다른 각도에서 보기.
+- 숫자 1–8: 무기 선택. R 또는 다시 세우기: 두 동과 진행 중인 공격 초기화.
+- 소리는 기본 OFF이며 사용자 조작으로 켭니다.
+
+| 키 | 도구 | 동작 |
 | --- | --- | --- |
-| 1 | Hammer | Immediate local hit |
-| 2 | Bomb | Immediate wide blast |
-| 3 | Laser | Immediate beam through the building |
-| 4 | Rubber mallet | Animated overhead swing and downward knockback |
-| 5 | Ethanol spray | Blue spray and gentle arcade wash-away damage; no ignition |
-| 6 | Food mixer | Spinning appliance thrown along an arc, wide impact |
-| 7 | Homomixer | Motor, long shaft and rotor head thrown with tall vertical damage |
-| 8 | Cosmetic containers | Cycles pump bottle, cream jar, tube, dropper bottle; colored splashes |
+| 1 | 해머 | 좁은 범위 즉시 타격 |
+| 2 | 폭탄 | 넓은 범위 즉시 타격 |
+| 3 | 레이저 | 직선 관통 |
+| 4 | 고무망치 | 위에서 내려친 뒤 아래 방향으로 파편 낙하 |
+| 5 | 에탄올 | 푸른 분사와 가상의 세척 파괴 효과 |
+| 6 | 푸드믹서 | 믹서 모델이 포물선으로 날아가 범위 타격 |
+| 7 | 호모믹서 | 모터·긴 샤프트·헤드 모델 투척, 세로 방향 타격 |
+| 8 | 화장품 용기 | 펌프병·크림통·튜브·스포이드병 순환과 색상별 튀김 효과 |
 
-Thrown props deal damage on arrival. In-flight props retain their original tool behavior when switching tools. Rebuilding cancels every pending impact. `dist/weapons.js` holds weapon configuration, procedural models and hit shapes. Effects reuse shared GPU resources and expire automatically.
+투척 피해는 도착 시 적용합니다. 무기를 바꿔도 진행 중인 공격의 종류는 유지합니다. 연쇄 붕괴는 타격된 동에만 적용하며, 동별 파괴율과 전체 파괴율을 구분합니다.
 
-Run logic checks with `node --experimental-default-type=module tests/weapons.test.mjs`. The harness uses real Three.js geometry and raycasting with a stubbed DOM/renderer; visual appearance and actual WebGL/audio still need browser verification.
+## 지도 데이터와 외관의 정확도
 
-## Building fidelity and map data
+[OpenStreetMap 원본](https://www.openstreetmap.org/#map=18/37.404314/127.102586)을 사용했습니다. 지도 데이터 © OpenStreetMap contributors, [ODbL 1.0](https://www.openstreetmap.org/copyright).
 
-Address 경기 성남시 분당구 판교로 255 confirmed through https://www.activepost.co.kr/introduction/location/ .
+- E동: [way 684716463](https://www.openstreetmap.org/way/684716463), OSM에 10층·44m로 기록.
+- F동: [way 684716461](https://www.openstreetmap.org/way/684716461), OSM에 9층·43m로 기록.
+- 건물 윤곽, 두 동의 거리·방향, 주변 건물·도로·하천·공원 도형을 같은 비율로 변환했습니다. 층 바닥도 윤곽에 맞춰 분할합니다.
+- 위 층수·높이는 OSM 편집 정보이며 실측 또는 건축물대장과 대조를 마친 값이 아닙니다. 주변 건물에 높이 정보가 없으면 추정 여부를 데이터에 남깁니다.
+- 외벽·창문·옥상·간판·수목·차량은 재구성한 표현입니다. 도로 폭과 차선도 단순화했습니다. 물리 효과는 구조 해석이 아닙니다.
+- 거리/지도 시점은 촬영된 거리뷰나 위성사진이 아닙니다. Google Maps 이미지나 뉴스 사진 파일을 복제해 텍스처로 사용하지 않습니다. 영상지도 또는 거리영상 연동에는 해당 제공자의 인증과 이용 조건 확인이 별도로 필요합니다.
+- 코스맥스 공장은 이번 단계에서 구현하지 않았습니다.
 
-Footprint, height and surroundings come from OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0):
+재현 가능한 원본 스냅샷과 출처는 [data/README.md](data/README.md)에 있습니다. 네트워크 없이 재생성합니다.
 
-- Target: way 684716463 "판교이노밸리클러스터 E동" — ≈57 × 35.5 m, 10 levels, 44 m. `dist/model.js` uses 20 × 12 cells of 1.5 units and 2.3-unit floors (≈0.52 units per meter).
-- Neighbor buildings and roads within ~150 m are extruded/drawn from OSM outlines in `dist/site.js`.
-- Regenerate with `python3 tools/osm_site.py > dist/site.js` (fetches the OSM API).
+```sh
+python3 tools/osm_site.py --input data/innovalley-osm.json --output dist/site.js
+```
 
-Not verified: façade colors, window pattern, roof equipment, sign. Trees and cars are decorative. Google Maps imagery is intentionally not used (its terms forbid extracting imagery or deriving models). Cosmax factory is not implemented in this phase.
+## 모듈
 
-## Rendering and physics
+| 파일 | 역할 |
+| --- | --- |
+| `dist/game.js` | 게임 상태, 공격 판정 연결, 점수·붕괴, 프레임 루프 |
+| `dist/scene.js` | 카메라·조명·렌더러 설정 |
+| `dist/building.js` | 지도 기반 주변 환경, 윤곽을 보존한 파괴 블록 생성 |
+| `dist/model.js` / `dist/site.js` | 대상 건물 설정 / 자동 생성 지도 데이터 |
+| `dist/weapons.js` | 무기 설정, 3D 도구 모델, 범위 판정 |
+| `dist/effects.js` | 무기 애니메이션·분사·파티클 생성과 공격 취소 |
+| `dist/physics.js` | 파편·입자 낙하와 수명 정리 |
+| `dist/ui.js` | HUD, 버튼, 키보드·포인터 입력 |
+| `dist/architecture.js` | 직접 생성한 창문 재질과 하늘 환경 |
 
-Three.js 0.170.0 vendored locally (MIT, license in vendor/THREE-LICENSE.txt). Approximate ballistic debris and arcade floor-collapse rules; no structural engineering simulation. Debris expires in 7 seconds. Resizing and touch rotation are supported. Optional Google Fonts gracefully falls back to system fonts.
+Three.js 0.170.0은 로컬에 포함했으며 [MIT 라이선스](dist/vendor/THREE-LICENSE.txt)를 유지합니다. 선택적 Google Fonts는 실패 시 시스템 글꼴로 대체합니다.
+
+## 검증
+
+```sh
+node --experimental-default-type=module tests/weapons.test.mjs
+python3 tests/site_test.py
+```
+
+로직 12개, 지도 데이터 3개 검증: 무기별 피해·지연 타격·초기화·F동 독립 파괴·동 사이 붕괴 격리·윤곽 면적·시점·옥상 모서리 직접 타격·원본 재생성.
+
+실제 브라우저 검증은 Playwright와 실행 중인 HTTP 서버가 있으면 수행할 수 있습니다.
+
+```sh
+node tests/browser-check.mjs
+```
+
+Playwright를 다른 위치에 설치했다면 `PLAYWRIGHT_MODULE`에 패키지 진입점 절대 경로를, 별도 Chromium은 `CHROMIUM_PATH`에 실행 파일 경로를 지정합니다. 기본 주소는 http://127.0.0.1:8787 이며 `SMASH_TEST_URL`로 바꿀 수 있습니다. 스크린샷은 무시되는 `outputs/browser/`에 저장됩니다. 검증용 상태 노출은 테스트 HTTP 응답에만 삽입하며 배포 소스에는 없습니다.
+
+Chromium에서 데스크톱 클릭, F동 공격, 시점 전환, 모바일 에뮬레이션의 터치 공격·회전·가로 넘침, 오디오 엔진 실행 상태를 확인했습니다. 실제 휴대폰 하드웨어·가청 효과음·기기 성능은 아직 검증하지 않았습니다.
