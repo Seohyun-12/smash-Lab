@@ -10,7 +10,9 @@ export function createUI() {
     $('#toast').style.opacity = 1;
     clearTimeout(toastTimer);
     if (!persistent) {
-      toastTimer = setTimeout(() => { $('#toast').style.opacity = 0.45; }, 3500);
+      toastTimer = setTimeout(() => {
+        $('#toast').style.opacity = 0.45;
+      }, 3500);
     }
   }
 
@@ -37,7 +39,16 @@ export function createUI() {
   return { toast, renderScore, renderWeapon, renderSound };
 }
 
-export function bindControls({ viewport, attack, reset, selectWeapon, toggleSound, home, zoom, orbit }) {
+export function bindControls({
+  viewport,
+  attack,
+  reset,
+  selectWeapon,
+  toggleSound,
+  home,
+  zoom,
+  orbit,
+}) {
   document.querySelectorAll('.weapon').forEach((button) => {
     button.onclick = () => selectWeapon(button.dataset.weapon);
   });
@@ -58,7 +69,14 @@ export function bindControls({ viewport, attack, reset, selectWeapon, toggleSoun
   let drag = null;
   viewport.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
-    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, lastX: event.clientX, lastY: event.clientY, moved: false };
+    drag = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      moved: false,
+    };
     viewport.setPointerCapture(event.pointerId);
   });
   viewport.addEventListener('pointermove', (event) => {
@@ -73,10 +91,18 @@ export function bindControls({ viewport, attack, reset, selectWeapon, toggleSoun
     if (!drag.moved) attack(event.clientX, event.clientY);
     drag = null;
   });
-  viewport.addEventListener('pointercancel', () => { drag = null; });
-  viewport.addEventListener('lostpointercapture', () => { drag = null; });
-  viewport.addEventListener('wheel', (event) => {
-    event.preventDefault();
-    zoom(event.deltaY * 0.045);
-  }, { passive: false });
+  viewport.addEventListener('pointercancel', () => {
+    drag = null;
+  });
+  viewport.addEventListener('lostpointercapture', () => {
+    drag = null;
+  });
+  viewport.addEventListener(
+    'wheel',
+    (event) => {
+      event.preventDefault();
+      zoom(event.deltaY * 0.045);
+    },
+    { passive: false },
+  );
 }
