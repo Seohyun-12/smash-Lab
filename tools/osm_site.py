@@ -1,108 +1,149 @@
 #!/usr/bin/env python3
-"""Generate dist/site.js from OpenStreetMap data around 판교이노밸리클러스터 E동.
+"""Generate the E/F site in one local coordinate frame from an OSM snapshot.
 
-Data © OpenStreetMap contributors, ODbL 1.0 (https://www.openstreetmap.org/copyright).
-
-Usage: python3 tools/osm_site.py > dist/site.js
-
-Coordinates are converted to game units in the target building's local frame:
-the building's long axis is +x and +z is the long face toward 대왕판교로, which the
-default camera looks at.
+Map data © OpenStreetMap contributors, ODbL 1.0.
+Example: python3 tools/osm_site.py --input data/innovalley-osm.json --output dist/site.js
+Without --input, download the bounded area from the official OSM API.
 """
+import argparse
 import json
 import math
+from pathlib import Path
 import urllib.request
 
-TARGET_WAY = 684716463  # 판교이노밸리클러스터 E동
+TARGETS = {'E': 684716463, 'F': 684716461}
 API = 'https://api.openstreetmap.org/api/0.6'
-BBOX = (127.1000, 37.4025, 127.1052, 37.4062)  # west, south, east, north
+BBOX = (127.1000, 37.4025, 127.1052, 37.4062)
 RADIUS_M = 150
 FLOOR_HEIGHT_GAME = 2.3
 ROAD_WIDTH_M = {'primary': 24, 'primary_link': 9, 'secondary': 18, 'tertiary': 12,
                 'residential': 8, 'service': 6, 'cycleway': 3, 'pedestrian': 5, 'footway': 2.5}
+SOURCE_URL = f"{API}/map.json?bbox={','.join(map(str, BBOX))}"
 
 
 def fetch():
-    url = f"{API}/map.json?bbox={','.join(map(str, BBOX))}"
-    req = urllib.request.Request(url, headers={'User-Agent': 'smash-lab-site-generator/1.0'})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.load(r)
+    req = urllib.request.Request(SOURCE_URL, headers={'User-Agent': 'smash-lab-site-generator/1.1'})
+    with urllib.request.urlopen(req, timeout=30) as response:
+        return json.load(response)
 
 
-def main():
-    data = fetch()
+def generate(data):
     nodes = {e['id']: (e['lat'], e['lon']) for e in data['elements'] if e['type'] == 'node'}
     ways = {e['id']: e for e in data['elements'] if e['type'] == 'way'}
-    target = ways[TARGET_WAY]
-    tags = target['tags']
-    ring = [nodes[n] for n in target['nodes']][:-1]
-    lat0 = sum(p[0] for p in ring) / len(ring)
-    lon0 = sum(p[1] for p in ring) / len(ring)
-    kx = 111320 * math.cos(math.radians(lat0))
-    kz = 110540
 
-    def meters(p):  # x east, z south
-        return ((p[1] - lon0) * kx, -(p[0] - lat0) * kz)
+    def ring(way):
+        ids = way['nodes']
+        if ids[0] != ids[-1] or len(ids) < 4:
+            raise ValueError(f"Building {way['id']} does not have a closed footprint")
+        return [nodes[node] for node in ids[:-1]]
 
-    pts = [meters(p) for p in ring]
-    # Long axis = direction of the longest footprint edge.
-    edges = [(pts[i], pts[(i + 1) % len(pts)]) for i in range(len(pts))]
-    a, b = max(edges, key=lambda e: math.dist(*e))
+    reference = ways[TARGETS['E']]
+    reference_ring = ring(reference)
+    lat0 = sum(p[0] for p in reference_ring) / len(reference_ring)
+    lon0 = sum(p[1] for p in reference_ring) / len(reference_ring)
+    kx, kz = 111320 * math.cos(math.radians(lat0)), 110540
+
+    def meters(point):
+        return ((point[1] - lon0) * kx, -(point[0] - lat0) * kz)
+
+    points = [meters(p) for p in reference_ring]
+    edges = [(points[i], points[(i + 1) % len(points)]) for i in range(len(points))]
+    a, b = max(edges, key=lambda edge: math.dist(*edge))
     angle = math.atan2(b[1] - a[1], b[0] - a[0])
     cos, sin = math.cos(-angle), math.sin(-angle)
 
-    def local(p):
-        return (p[0] * cos - p[1] * sin, p[0] * sin + p[1] * cos)
+    def local(point):
+        x, z = meters(point)
+        return x * cos - z * sin, x * sin + z * cos
 
-    lp = [local(p) for p in pts]
-    min_x, max_x = min(p[0] for p in lp), max(p[0] for p in lp)
-    min_z, max_z = min(p[1] for p in lp), max(p[1] for p in lp)
-    height_m = float(tags.get('height', 44))
-    levels = int(tags.get('building:levels', 10))
-    scale = FLOOR_HEIGHT_GAME * levels / height_m  # game units per meter
-    cx, cz = (min_x + max_x) / 2, (min_z + max_z) / 2
+    local_ring = [local(p) for p in reference_ring]
+    cx = (min(p[0] for p in local_ring) + max(p[0] for p in local_ring)) / 2
+    cz = (min(p[1] for p in local_ring) + max(p[1] for p in local_ring)) / 2
+    reference_height = float(reference['tags']['height'])
+    scale = FLOOR_HEIGHT_GAME * int(reference['tags']['building:levels']) / reference_height
 
-    def game(p):
-        q = local(meters(p))
-        return [round((q[0] - cx) * scale, 2), round((q[1] - cz) * scale, 2)]
+    def game(point):
+        x, z = local(point)
+        return [round((x - cx) * scale, 3), round((z - cz) * scale, 3)]
+
+    targets = []
+    for letter, way_id in TARGETS.items():
+        way = ways[way_id]
+        tags = way['tags']
+        outline = [game(p) for p in ring(way)]
+        xs, zs = [p[0] for p in outline], [p[1] for p in outline]
+        height, levels = float(tags['height']), int(tags['building:levels'])
+        if height <= 0 or levels <= 0:
+            raise ValueError(f'Invalid height/levels on {way_id}')
+        targets.append({
+            'id': letter, 'name': tags['name'], 'osmWay': way_id,
+            'osmVersion': way.get('version'), 'osmTimestamp': way.get('timestamp'),
+            'sourceUrl': f'https://www.openstreetmap.org/way/{way_id}',
+            'heightMeters': height, 'height': round(height * scale, 4), 'levels': levels,
+            'footprintMeters': [round((max(xs) - min(xs)) / scale, 1),
+                                round((max(zs) - min(zs)) / scale, 1)],
+            'center': [round((min(xs) + max(xs)) / 2, 3), round((min(zs) + max(zs)) / 2, 3)],
+            'outline': outline,
+        })
 
     neighbors, roads = [], []
-    for w in ways.values():
-        if w['id'] == TARGET_WAY:
+    for way in ways.values():
+        if way['id'] in TARGETS.values():
             continue
-        t = w.get('tags', {})
-        coords = [nodes[n] for n in w['nodes'] if n in nodes]
+        tags = way.get('tags', {})
+        coords = [nodes[n] for n in way['nodes'] if n in nodes]
         if len(coords) < 2:
             continue
-        g = [game(p) for p in coords]
-        mx = sum(p[0] for p in g) / len(g) / scale
-        mz = sum(p[1] for p in g) / len(g) / scale
-        if 'building' in t:
-            if math.hypot(mx, mz) > RADIUS_M:
+        positions = [game(p) for p in coords]
+        mx = sum(p[0] for p in positions) / len(positions) / scale
+        mz = sum(p[1] for p in positions) / len(positions) / scale
+        if 'building' in tags:
+            if math.hypot(mx, mz) > RADIUS_M or way['nodes'][0] != way['nodes'][-1]:
                 continue
-            h = float(t.get('height') or float(t.get('building:levels', 3)) * 4)
-            minh = float(t.get('min_height', 0))
-            neighbors.append({'name': t.get('name', ''), 'height': round(h * scale, 2),
-                              'base': round(minh * scale, 2), 'outline': g[:-1] if g[0] == g[-1] else g})
-        elif t.get('highway') in ROAD_WIDTH_M:
-            roads.append({'name': t.get('name', ''), 'kind': t['highway'],
-                          'width': round(ROAD_WIDTH_M[t['highway']] * scale, 2), 'path': g})
+            height = float(tags.get('height') or float(tags.get('building:levels', 3)) * 4)
+            base = float(tags.get('min_height', 0))
+            if height <= base:
+                continue
+            neighbors.append({'osmWay': way['id'], 'name': tags.get('name', ''),
+                              'height': round(height * scale, 3), 'base': round(base * scale, 3),
+                              'heightEstimated': 'height' not in tags, 'outline': positions[:-1]})
+        elif tags.get('highway') in ROAD_WIDTH_M:
+            roads.append({'name': tags.get('name', ''), 'kind': tags['highway'],
+                          'width': round(ROAD_WIDTH_M[tags['highway']] * scale, 3), 'path': positions})
 
-    site = {
-        'source': 'OpenStreetMap way %d (© OpenStreetMap contributors, ODbL)' % TARGET_WAY,
-        'name': tags.get('name', ''),
-        'levels': levels,
-        'heightMeters': height_m,
-        'footprintMeters': [round(max_x - min_x, 1), round(max_z - min_z, 1)],
-        'scale': round(scale, 4),
-        'footprint': [game(p) for p in ring],
-        'neighbors': sorted(neighbors, key=lambda n: -n['height']),
+    e = targets[0]
+    return {
+        'source': 'OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0)',
+        'sourceUrl': SOURCE_URL, 'snapshot': 'data/innovalley-osm.json',
+        'coordinateFrame': {'originLat': lat0, 'originLon': lon0, 'rotationRadians': angle,
+                            'metersToGameUnits': scale},
+        'name': e['name'], 'levels': e['levels'], 'heightMeters': e['heightMeters'],
+        'footprintMeters': e['footprintMeters'], 'scale': scale, 'footprint': e['outline'],
+        'targets': targets, 'neighbors': sorted(neighbors, key=lambda n: (-n['height'], n['osmWay'])),
         'roads': roads,
     }
-    print('// Generated by tools/osm_site.py — do not edit by hand.')
-    print('// Map data © OpenStreetMap contributors, ODbL 1.0. https://www.openstreetmap.org/copyright')
-    print('// Coordinates are game units in E동-local frame (long axis = x).')
-    print('export const site = ' + json.dumps(site, ensure_ascii=False, separators=(',', ':')) + ';')
+
+
+def serialize(site):
+    return ('// Generated by tools/osm_site.py — do not edit by hand.\n'
+            '// Map data © OpenStreetMap contributors, ODbL 1.0. https://www.openstreetmap.org/copyright\n'
+            '// Both targets share the E-local coordinate frame; heights are OSM tags, not surveyed values.\n'
+            'export const site = ' + json.dumps(site, ensure_ascii=False, separators=(',', ':')) + ';\n')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--input', type=Path, help='Saved OSM API JSON (offline reproducible input)')
+    parser.add_argument('--output', type=Path, help='Write generated JS atomically; default stdout')
+    args = parser.parse_args()
+    data = json.loads(args.input.read_text()) if args.input else fetch()
+    output = serialize(generate(data))
+    if args.output:
+        temporary = args.output.with_suffix(args.output.suffix + '.tmp')
+        temporary.write_text(output)
+        temporary.replace(args.output)
+    else:
+        print(output, end='')
 
 
 if __name__ == '__main__':
