@@ -40,7 +40,7 @@ const signMaterials = new Map(
 function addBlock(x, y, z, w, h, d, m, floor, details = {}) {
   const o = cube(target, x, y, z, w, h, d, m);
   if (details.geometry) o.geometry = details.geometry;
-  o.userData = { alive: true, floor, buildingId: details.buildingId };
+  o.userData = { alive: true, floor, buildingId: details.buildingId, role: details.role };
   blocks.push(o);
   return o;
 }

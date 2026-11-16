@@ -326,3 +326,20 @@ test('home view places Space Park before both buildings on wide and phone screen
     assert(Math.cos(parkFacingYaw) < 0, 'camera must be on the park side of the buildings');
   }
 });
+
+test('photo-inspired circular windows belong to each target and rebuild without residue', () => {
+  rebuild();
+  const original = game.blocks.length;
+  for (const id of ['E', 'F']) {
+    const windows = game.blocks.filter(
+      (b) => b.userData.buildingId === id && b.userData.role === 'porthole',
+    );
+    assert.equal(windows.length, 4);
+    const window = windows[0];
+    game.detach(window, window.position.clone());
+    assert.equal(window.userData.alive, false);
+  }
+  game.reset();
+  assert.equal(game.blocks.length, original);
+  assert(game.blocks.every((b) => b.userData.alive));
+});

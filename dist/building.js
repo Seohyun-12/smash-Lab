@@ -1,3 +1,4 @@
+import { addPhotoDetails, photoFace } from './facade.js';
 import { glassMaterial } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 import { site } from './site.js';
@@ -143,7 +144,7 @@ function addRoad(scene, road) {
 }
 
 export function buildScenery(scene) {
-  cube(scene, 12, -1, 0, GROUND_SIZE, 1.5, GROUND_SIZE, mat('#a1ae9d'));
+  cube(scene, 12, -1, 0, 600, 1.5, 600, mat('#a1ae9d'));
   for (const area of site.landAreas) {
     let ring = clipPolygon(area.outline, 0, -GROUND_SIZE / 2, true);
     ring = clipPolygon(ring, 0, GROUND_SIZE / 2, false);
@@ -249,6 +250,7 @@ function floorTiles(outline) {
 // Keep each piece's position in the site frame so hit tests, fragments and both targets agree.
 export function buildTarget(B, addBlock, signMaterial) {
   const tiles = floorTiles(B.outline);
+  const featuredFace = photoFace(B);
   const meta = { buildingId: B.id };
   for (let floor = 0; floor < B.floors; floor++) {
     const y = 0.5 + (floor + 0.5) * B.floorHeight;
@@ -295,6 +297,7 @@ export function buildTarget(B, addBlock, signMaterial) {
     });
   // Top and end trims are segmented so the full outline remains destructible.
   for (let edge = 0; edge < B.outline.length; edge++) {
+    if (edge === featuredFace.index) continue;
     const a = B.outline[edge],
       b = B.outline[(edge + 1) % B.outline.length];
     const dx = b[0] - a[0],
@@ -317,6 +320,7 @@ export function buildTarget(B, addBlock, signMaterial) {
       mesh.rotation.y = -Math.atan2(dz, dx);
     }
   }
+  addPhotoDetails(B, addBlock, materials);
   const frontZ = Math.max(...B.outline.map((p) => p[1]));
   addBlock(
     B.center[0],
