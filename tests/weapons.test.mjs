@@ -343,3 +343,28 @@ test('photo-inspired circular windows belong to each target and rebuild without 
   assert.equal(game.blocks.length, original);
   assert(game.blocks.every((b) => b.userData.alive));
 });
+
+test('rounded frames occupy both long faces and circular windows stay on end faces', () => {
+  rebuild();
+  for (const id of ['E', 'F']) {
+    const frames = game.blocks.filter(
+      (b) => b.userData.buildingId === id && b.userData.role === 'frame',
+    );
+    assert.deepEqual([...new Set(frames.map((b) => b.userData.face))].sort(), ['+z', '-z']);
+    const windows = game.blocks.filter(
+      (b) => b.userData.buildingId === id && b.userData.role === 'porthole',
+    );
+    assert(windows.every((b) => b.userData.face === '-x'));
+    assert(
+      frames.some((b) => b.userData.floor < 3),
+      'bottom frame must be supported by its real floor',
+    );
+  }
+});
+
+test('matching facade material settings share GPU resources across rebuilds', async () => {
+  const { glassMaterial } = await import('../dist/architecture.js');
+  const first = glassMaterial('#6f9fb4', false, { frameColor: '#4a4f52' });
+  rebuild();
+  assert.equal(first, glassMaterial('#6f9fb4', false, { frameColor: '#4a4f52' }));
+});

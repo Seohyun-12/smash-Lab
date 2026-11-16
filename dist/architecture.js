@@ -2,7 +2,8 @@ import * as THREE from './vendor/three.module.js';
 import { RGBELoader } from './vendor/RGBELoader.js';
 
 // Procedural materials, not copied street-view images. Pattern details are illustrative.
-function windowTexture(color) {
+const glassCache = new Map();
+function windowTexture(color, options = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
   canvas.height = 256;
@@ -19,12 +20,14 @@ function windowTexture(color) {
   ctx.fillStyle = '#162e37';
   ctx.globalAlpha = 0.4;
   ctx.fillRect(8, 190, 110, 54);
-  ctx.fillStyle = '#263c48';
+  ctx.fillStyle = options.frameColor ?? '#263c48';
   ctx.globalAlpha = 1;
   ctx.fillRect(0, 0, 3, 256);
   ctx.fillRect(125, 0, 3, 256);
   ctx.fillRect(0, 0, 128, 5);
   ctx.fillRect(0, 249, 128, 7);
+  ctx.fillRect(0, 85, 128, 2);
+  ctx.fillRect(0, 170, 128, 2);
   ctx.fillRect(0, 191, 128, 3);
   ctx.fillRect(63, 0, 2, 256);
   ctx.fillStyle = '#bac9ce';
@@ -35,10 +38,12 @@ function windowTexture(color) {
   return texture;
 }
 
-export function glassMaterial(color, tiled = false) {
-  const texture = windowTexture(color);
+export function glassMaterial(color, tiled = false, options = {}) {
+  const key = JSON.stringify([color, tiled, options]);
+  if (glassCache.has(key)) return glassCache.get(key);
+  const texture = windowTexture(color, options);
   if (tiled) texture.repeat.set(0.55, 0.42);
-  return new THREE.MeshPhysicalMaterial({
+  const material = new THREE.MeshPhysicalMaterial({
     map: texture,
     color: '#a8c3ca',
     roughness: 0.16,
@@ -47,6 +52,8 @@ export function glassMaterial(color, tiled = false) {
     clearcoatRoughness: 0.1,
     envMapIntensity: 1.15,
   });
+  glassCache.set(key, material);
+  return material;
 }
 
 export function claddingMaterial() {

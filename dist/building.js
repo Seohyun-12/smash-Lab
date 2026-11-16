@@ -1,4 +1,4 @@
-import { addPhotoDetails, photoFace } from './facade.js';
+import { addPhotoDetails, buildingFaces, cladding } from './facade.js';
 import { glassMaterial } from './architecture.js';
 import * as THREE from './vendor/three.module.js';
 import { site } from './site.js';
@@ -250,7 +250,8 @@ function floorTiles(outline) {
 // Keep each piece's position in the site frame so hit tests, fragments and both targets agree.
 export function buildTarget(B, addBlock, signMaterial) {
   const tiles = floorTiles(B.outline);
-  const featuredFace = photoFace(B);
+  const faces = buildingFaces(B);
+  const framedSides = B.exterior?.frameSides ?? ['-z'];
   const meta = { buildingId: B.id };
   for (let floor = 0; floor < B.floors; floor++) {
     const y = 0.5 + (floor + 0.5) * B.floorHeight;
@@ -264,12 +265,17 @@ export function buildTarget(B, addBlock, signMaterial) {
       const panelWidth = length / panels;
       for (let i = 0; i < panels; i++) {
         const t = (i + 0.5) / panels;
-        const material =
+        let material =
           floor === 0
             ? materials.dark
             : (i + floor) % 4 === 0
               ? materials.lightGlass
               : materials.glass;
+        const style = B.exterior?.faces[faces[edge].side];
+        if (floor > 0 && style?.glass)
+          material = glassMaterial(style.glass, false, { frameColor: style.frame });
+        if (floor > 0 && style?.type === 'metalLouver')
+          material = t > 0.34 && t < 0.64 ? materials.dark : cladding;
         const mesh = addBlock(
           a[0] + dx * t,
           y,
@@ -279,7 +285,7 @@ export function buildTarget(B, addBlock, signMaterial) {
           0.32,
           material,
           floor,
-          meta,
+          { ...meta, face: faces[edge].side },
         );
         mesh.rotation.y = -Math.atan2(dz, dx);
       }
@@ -297,7 +303,7 @@ export function buildTarget(B, addBlock, signMaterial) {
     });
   // Top and end trims are segmented so the full outline remains destructible.
   for (let edge = 0; edge < B.outline.length; edge++) {
-    if (edge === featuredFace.index) continue;
+    if (framedSides.includes(faces[edge].side)) continue;
     const a = B.outline[edge],
       b = B.outline[(edge + 1) % B.outline.length];
     const dx = b[0] - a[0],
