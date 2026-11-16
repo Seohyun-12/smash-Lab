@@ -11,7 +11,7 @@ python3 -m http.server 8787 --directory dist --bind 127.0.0.1
 http://127.0.0.1:8787 을 엽니다. 파일을 직접 더블클릭하는 방식 대신 HTTP로 실행합니다.
 
 - 클릭/터치: 공격. 드래그: 회전. 스크롤 또는 +/-: 확대/축소.
-- E동/F동/전체 버튼: 건물에 맞춘 시점. 입체/거리/지도: 동일한 게임 공간을 다른 각도에서 보기.
+- E동/F동/전체 버튼: 건물에 맞춘 시점. 입체/거리/지도: 동일한 게임 공간을 다른 각도에서 보기. `도로 쪽`은 대왕판교로 방향의 입면을 보여줍니다.
 - 시작 화면과 홈 버튼은 우주공원 쪽에서 E·F동을 바라봅니다. 공원의 가까운 부분을 전경에 두고 건물이 충분히 크게 보이도록 프레이밍합니다.
 - 숫자 1–5: 무기 선택. R 또는 다시 세우기: 두 동과 진행 중인 공격 초기화.
 - 소리는 기본 OFF이며 사용자 조작으로 켭니다.
@@ -59,7 +59,9 @@ python3 tools/osm_site.py --input data/innovalley-osm.json --output dist/site.js
 | `dist/physics.js` | 파편·입자 낙하와 수명 정리 |
 | `dist/ui.js` | HUD, 버튼, 키보드·포인터 입력 |
 | `dist/architecture.js` | 물리 기반 유리·금속 재질, HDR 하늘 환경과 실패 시 대체 환경 |
-| `dist/facade.js` | 사진을 참고한 프레임·원형 창·입구 파괴 조각 |
+| `dist/exterior-config.js` / `dist/facade.js` | 자료별 신뢰도·면 설정 / 양면 프레임·끝면 원형 창·박스·색 띠·간판 |
+| `dist/roof.js` | E 설비/녹화, F 냉각탑/개방 중정 |
+| `dist/bridge.js` | E–F 상부 연결 통로와 지지 소실 처리 |
 | `dist/view.js` | 지도상 우주공원 방향과 반응형 시작 구도 계산 |
 
 Three.js 0.170.0은 로컬에 포함했으며 [MIT 라이선스](dist/vendor/THREE-LICENSE.txt)를 유지합니다. 선택적 Google Fonts는 실패 시 시스템 글꼴로 대체합니다.
@@ -71,7 +73,7 @@ node --experimental-default-type=module tests/weapons.test.mjs
 python3 tests/site_test.py
 ```
 
-로직 15개, 지도 데이터 3개 검증: 무기별 피해·지연 타격·초기화·F동 독립 파괴·동 사이 붕괴 격리·윤곽 면적·시점·옥상 모서리 직접 타격·원본 재생성, 5종 도구 제한, 공원 방향 프레이밍, 원형 창 초기화.
+로직 26개, 지도 데이터 3개 검증: 무기별 피해·지연 타격·초기화·F동 독립 파괴·동 사이 붕괴 격리·윤곽 면적·시점·옥상 모서리 직접 타격·원본 재생성, 5종 도구 제한, 공원 방향 프레이밍, 원형 창 초기화.
 
 실제 브라우저 검증은 Playwright와 실행 중인 HTTP 서버가 있으면 수행할 수 있습니다.
 
@@ -82,3 +84,9 @@ node tests/browser-check.mjs
 Playwright를 다른 위치에 설치했다면 `PLAYWRIGHT_MODULE`에 패키지 진입점 절대 경로를, 별도 Chromium은 `CHROMIUM_PATH`에 실행 파일 경로를 지정합니다. 기본 주소는 http://127.0.0.1:8787 이며 `SMASH_TEST_URL`로 바꿀 수 있습니다. 스크린샷은 무시되는 `outputs/browser/`에 저장됩니다. 검증용 상태 노출은 테스트 HTTP 응답에만 삽입하며 배포 소스에는 없습니다.
 
 Chromium에서 데스크톱 클릭, F동 공격, 시점 전환, 모바일 에뮬레이션의 터치 공격·회전·가로 넘침, 오디오 엔진 실행 상태를 확인했습니다. 실제 휴대폰 하드웨어·가청 효과음·기기 성능은 아직 검증하지 않았습니다.
+
+## 외관 보완 기록
+
+[관찰 자료 3.7절과 보완 결과 3.8절](docs/exterior-reference.md)을 기준으로 두 긴 면의 프레임, 끝면 원형 창, E동 도로 쪽 유리 박스·색 띠, 간판 위치, 서로 다른 옥상, E–F 상부 유리 통로를 보완했습니다. 정확한 면별 치수·중정 깊이·통로 높이는 추정한 재구성입니다. 원본 사진과 지도 영상은 게임 자산으로 복사하지 않았습니다.
+
+참고 방향 검증은 같은 Playwright 환경에서 `node tests/exterior-browser.mjs`로 실행합니다. `EXTERIOR_FILTER=map,04b`처럼 일부만 재검증할 수 있습니다. 출력은 `outputs/exterior/`에 남고 Git에서 제외합니다. 공원/도로/옥상 비교 화면은 `comparison.html`입니다. 참고 사진은 별도 로컬 폴더를 읽기만 합니다.
