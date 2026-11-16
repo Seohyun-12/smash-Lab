@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {building as B} from './model.js';
+import {mat,cube,buildScenery,buildTarget,createSignMaterial} from './building.js';
 import {WEAPONS,CONTAINERS,CONTAINER_COLORS,createWeaponModel,affectedByWeapon} from './weapons.js';
 const $=s=>document.querySelector(s), viewport=$('#viewport');
 const scene=new THREE.Scene();scene.background=new THREE.Color('#c6d5c9');scene.fog=new THREE.Fog('#c6d5c9',110,240);
@@ -9,47 +10,19 @@ try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-perfo
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;viewport.append(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xf5fff0,0x536b61,2.6));
 const sun=new THREE.DirectionalLight(0xfff3cf,3);sun.position.set(-35,70,25);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-60,right:60,top:60,bottom:-60,near:1,far:160});sun.shadow.bias=-.0005;scene.add(sun);
-const mat=(color,roughness=.8)=>new THREE.MeshStandardMaterial({color,roughness});
-const concrete=mat('#b7c4ba'), dark=mat('#354f52'), glass=mat('#618b8a',.3), lightGlass=mat('#82a4a0',.35), trim=mat('#d5dbce'), road=mat('#78918a');
-const box=new THREE.BoxGeometry(1,1,1), pieceGeo=new THREE.IcosahedronGeometry(.24,0);
-function cube(x,y,z,w,h,d,m,parent=scene){const o=new THREE.Mesh(box,m);o.position.set(x,y,z);o.scale.set(w,h,d);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o;}
-cube(0,-1,0,95,1.5,75,mat('#a5bca6'));cube(0,-.13,0,39,.6,30,mat('#b7c9b3'));cube(0,.22,0,29,.15,20,mat('#d0d8c6'));
-cube(0,-.25,25,110,.3,12,road);cube(-33,-.25,-5,12,.3,70,road);
-for(let x=-50;x<55;x+=7)cube(x,-.07,25,3,.025,.15,trim);
-for(let z=-37;z<29;z+=7)cube(-33,-.07,z,.15,.025,3,trim);
-// Surrounding masses are fictional scenery, kept visually quieter than the target.
-for(const [x,z,w,h,d] of [[-26,-24,13,13,13],[5,-30,20,11,11],[29,-17,12,18,16],[34,9,10,8,13]]){
- cube(x,h/2-.5,z,w,h,d,mat('#9eb2a7'));for(let y=2;y<h;y+=2.2)cube(x,y,z+d/2+.02,w-.6,.65,.08,mat('#7f9b94'));
-}
-const leaf=mat('#648a60'), bark=mat('#6c7964');
-for(const [x,z] of [[-20,13],[-13,15],[-4,15],[6,15],[17,15],[21,5],[21,-5],[-21,-8],[-21,3]]){cube(x,1,z,.25,2,.25,bark);const t=new THREE.Mesh(new THREE.IcosahedronGeometry(1.7,1),leaf);t.position.set(x,3,z);t.scale.y=1.3;t.castShadow=true;scene.add(t);}
-for(const [x,z] of [[-19,19],[14,20],[24,20]]){cube(x,.5,z,2.5,.8,1.15,mat('#e3d9b7'));cube(x,.95,z,1.3,.5,1.05,dark);}
+const pieceGeo=new THREE.IcosahedronGeometry(.24,0);
+buildScenery(scene);
 const target=new THREE.Group();scene.add(target);
 let blocks=[],debris=[],particles=[],initialCount=0, destroyed=0,points=0,weapon='hammer',sound=false,audioCtx,shake=0,combo=0,lastHit=0,completed=false;
 let actions=[],nextAttack=0,containerIndex=0;
 let yaw=.68,pitch=.5,distance=75;
 const center=new THREE.Vector3(0,9,0);
-function label(){const c=document.createElement('canvas');c.width=1024;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#d9e4d3';ctx.fillRect(0,0,1024,128);ctx.fillStyle='#294b49';ctx.font='bold 59px sans-serif';ctx.textAlign='center';ctx.fillText('INNOVALLEY  /  E',512,85);const tx=new THREE.CanvasTexture(c);tx.colorSpace=THREE.SRGBColorSpace;return new THREE.MeshStandardMaterial({map:tx,roughness:.9});}
-const signMat=label();
-function addBlock(x,y,z,w,h,d,m,floor){const o=cube(x,y,z,w,h,d,m,target);o.userData={alive:true,floor};blocks.push(o);return o;}
+const signMat=createSignMaterial();
+function addBlock(x,y,z,w,h,d,m,floor){const o=cube(target,x,y,z,w,h,d,m);o.userData={alive:true,floor};blocks.push(o);return o;}
 function reset(){
  for(const a of actions)a.model.removeFromParent();actions=[];nextAttack=0;containerIndex=0;lastHit=0;shake=0;
  for(const o of [...blocks,...debris,...particles]){o.removeFromParent();if(o.userData.line){o.geometry.dispose();o.material.dispose();}}blocks=[];debris=[];particles=[];destroyed=0;points=0;combo=0;completed=false;
- const width=B.columns*B.cell,depth=B.depth*B.cell;
- for(let f=0;f<B.floors;f++){
-  const y=f*B.floorHeight+1.65;
-  for(let col=0;col<B.columns;col++)for(const side of [-1,1]){
-   const x=(col-(B.columns-1)/2)*B.cell;
-   addBlock(x,y,side*depth/2,1.43,1.92,.55,(col%4===0?trim:(col+f)%3===0?lightGlass:glass),f);
-  }
-  for(let col=0;col<B.depth-1;col++)for(const side of [-1,1])addBlock(side*width/2,y,(col-(B.depth-2)/2)*B.cell,.6,1.92,1.43,col%3===0?trim:glass,f);
-  // Breakable floor plates, visible through holes in the façade.
-  for(let k=0;k<7;k++)addBlock((k-3)*3,y-1.07,0,2.96,.28,depth+.6,concrete,f);
- }
- addBlock(0,B.floors*B.floorHeight+.5,0,22,.5,12,trim,B.floors-1);
- addBlock(-6,B.floors*B.floorHeight+1.5,-1,4,2,3,dark,B.floors-1);
- addBlock(1,B.floors*B.floorHeight+1.25,-2,3,1.5,3,concrete,B.floors-1);
- addBlock(0,B.floors*B.floorHeight-.6,5.62,11,.95,.15,signMat,B.floors-1);
+ buildTarget(B,addBlock,signMat);
  initialCount=blocks.length;updateHud();toast('무기를 고르고 건물을 클릭하세요');
 }
 function updateHud(){const percentage=destroyed===initialCount?100:Math.min(99,Math.round(destroyed/initialCount*100));$('#score').textContent=String(points).padStart(5,'0');$('#percent').textContent=percentage+'%';$('#bar').style.width=percentage+'%';if(destroyed===initialCount&&!completed){completed=true;toast('100% 파괴 완료! 다시 세우고 한 판 더 ↗');}}
