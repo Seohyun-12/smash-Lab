@@ -39,7 +39,7 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
     scene.add(line);
     getParticles().push(line);
   }
-  function launch({ kind, hit, direction, floor, variant, buildingId }) {
+  function launch({ kind, hit, direction, floor, variant, buildingId,directBlock }) {
     const config = WEAPONS[kind];
     const model = createWeaponModel(kind, variant);
     scene.add(model);
@@ -64,6 +64,7 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
       direction,
       floor,
       buildingId,
+      directBlock,
       start,
       age: 0,
       impacted: false,
@@ -120,7 +121,7 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
         config.animation === 'swing' ? 0.72 : config.animation === 'spray' ? 0.6 : 1;
       if (!a.impacted && t >= impactTime) {
         a.impacted = true;
-        onImpact(a.kind, a.hit, a.direction, a.floor, a.variant, a.buildingId);
+        onImpact(a.kind, a.hit, a.direction, a.floor, a.variant, a.buildingId,a.directBlock);
       }
       if (t === 1) {
         a.model.removeFromParent();

@@ -259,3 +259,16 @@ test('map and street cameras keep the same destructible site', () => {
   assert.equal(game.state().destroyed,0);
   game.setCameraMode('orbit');game.focusBuilding('all');
 });
+
+test('an exact roof hit breaks a tile even at the corner between tile centers', async () => {
+  rebuild();
+  game.setCameraMode('map');advance(.04);game.selectWeapon('hammer');
+  const {buildings}=await import('../dist/model.js');
+  const e=buildings[0];
+  const x=Math.min(...e.outline.map(p=>p[0]))+4.5*3;
+  const z=Math.min(...e.outline.map(p=>p[1]))+4.5*2;
+  const point=new THREE.Vector3(x,e.height+.67,z).project(game.camera);
+  game.attack((point.x+1)*600,(1-point.y)*325);
+  assert(game.state().destroyed>0,'direct ray hit on roof tile must cause damage');
+  game.setCameraMode('orbit');game.focusBuilding('all');
+});

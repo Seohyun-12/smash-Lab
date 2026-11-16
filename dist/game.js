@@ -140,11 +140,11 @@ const effects = createWeaponEffects({
   toast,
 });
 const actions = effects.actions;
-function impact(kind, hit, direction, floor, variant = 0, buildingId) {
+function impact(kind, hit, direction, floor, variant = 0, buildingId, directBlock) {
   const config = WEAPONS[kind];
   let count = 0;
   for (const o of blocks) {
-    if (o.userData.alive && affectedByWeapon(kind, o.position, hit, direction)) {
+    if (o.userData.alive && (o===directBlock || affectedByWeapon(kind, o.position, hit, direction))) {
       detach(o, hit, config.power);
       if (kind === 'mallet') o.userData.velocity.y = -9;
       count++;
@@ -207,10 +207,10 @@ function attack(clientX, clientY) {
   nextAttack = now + config.cooldown * 1000;
   const variant = kind === 'cosmetics' ? containerIndex++ % 4 : 0;
   if (!config.animation) {
-    impact(kind, hit, direction, floor, variant, buildingId);
+    impact(kind, hit, direction, floor, variant, buildingId,hits[0].object);
     return;
   }
-  effects.launch({ kind, hit, direction, floor, variant, buildingId });
+  effects.launch({ kind, hit, direction, floor, variant, buildingId,directBlock:hits[0].object });
 }
 
 function selectWeapon(w) {
