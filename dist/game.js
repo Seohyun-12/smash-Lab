@@ -1,11 +1,12 @@
 import { parkFacingYaw, parkOverview } from './view.js';
+import { buildBridge, releaseUnsupportedBridge } from './bridge.js';
 import { createUI, bindControls } from './ui.js';
 import { createGameScene } from './scene.js';
 import { createWeaponEffects } from './effects.js';
 import { stepDebris, stepParticles } from './physics.js';
 import * as THREE from './vendor/three.module.js';
 import { buildings } from './model.js';
-import { mat, cube, buildScenery, buildTarget, createSignMaterial } from './building.js';
+import { mat, materials, cube, buildScenery, buildTarget, createSignMaterial } from './building.js';
 import { WEAPONS, CONTAINERS, CONTAINER_COLORS, affectedByWeapon } from './weapons.js';
 const viewport = document.querySelector('#viewport');
 const ui = createUI();
@@ -72,6 +73,7 @@ function reset() {
   combo = 0;
   completed = false;
   for (const building of buildings) buildTarget(building, addBlock, signMaterials.get(building.id));
+  buildBridge(buildings, addBlock, materials);
   initialCount = blocks.length;
   updateHud();
   toast('무기를 고르고 건물을 클릭하세요');
@@ -164,7 +166,10 @@ function impact(kind, hit, direction, floor, variant = 0, buildingId, directBloc
   if (!count) return;
   // The spray has a gentle arcade wash-away effect; it doesn't ignite or trigger a collapse.
   const layer = blocks.filter(
-    (o) => o.userData.buildingId === buildingId && o.userData.floor === floor,
+    (o) =>
+      o.userData.buildingId === buildingId &&
+      o.userData.floor === floor &&
+      o.userData.role !== 'bridge',
   );
   if (kind !== 'ethanol' && layer.filter((o) => !o.userData.alive).length / layer.length > 0.65) {
     for (const o of blocks)
@@ -173,6 +178,7 @@ function impact(kind, hit, direction, floor, variant = 0, buildingId, directBloc
         count++;
       }
   }
+  count += releaseUnsupportedBridge(blocks, (block) => detach(block, hit, 0.5));
   const now = performance.now();
   combo = now - lastHit < 2200 ? combo + 1 : 1;
   lastHit = now;

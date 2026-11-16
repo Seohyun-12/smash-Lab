@@ -58,6 +58,7 @@ for (const path of [
   'scene.js',
   'ui.js',
   'view.js',
+  'bridge.js',
 ])
   src = src.replace(
     JSON.stringify('./' + path).replaceAll('"', "'"),
@@ -367,6 +368,49 @@ test('matching facade material settings share GPU resources across rebuilds', as
   const first = glassMaterial('#6f9fb4', false, { frameColor: '#4a4f52' });
   rebuild();
   assert.equal(first, glassMaterial('#6f9fb4', false, { frameColor: '#4a4f52' }));
+});
+
+test('the elevated glazed connection spans E and F and rebuilds with the site', async () => {
+  rebuild();
+  const { bridgePlan } = await import('../dist/bridge.js');
+  const { buildings } = await import('../dist/model.js');
+  const plan = bridgePlan(buildings);
+  const bridge = game.blocks.filter((b) => b.userData.role === 'bridge');
+  assert(bridge.length > 0);
+  assert(plan.start < plan.end);
+  assert(plan.y > 10);
+  assert(bridge.every((b) => b.position.x >= plan.start - 0.1 && b.position.x <= plan.end + 0.1));
+  assert(
+    bridge.every(
+      (b) => b.userData.supportFloors.E !== undefined && b.userData.supportFloors.F !== undefined,
+    ),
+  );
+  const count = game.blocks.length;
+  game.detach(bridge[0], bridge[0].position.clone());
+  game.reset();
+  assert.equal(game.blocks.length, count);
+  assert(game.blocks.every((b) => b.userData.alive));
+});
+
+test('failed F support releases the connection without collapsing E', async () => {
+  rebuild();
+  const { releaseUnsupportedBridge } = await import('../dist/bridge.js');
+  const bridge = game.blocks.filter((b) => b.userData.role === 'bridge');
+  const floor = bridge[0].userData.supportFloors.F;
+  for (const b of game.blocks.filter(
+    (b) => b.userData.buildingId === 'F' && b.userData.floor === floor,
+  ))
+    game.detach(b, new THREE.Vector3());
+  const released = releaseUnsupportedBridge(game.blocks, (b) =>
+    game.detach(b, new THREE.Vector3()),
+  );
+  assert.equal(released, bridge.length);
+  assert(bridge.every((b) => !b.userData.alive));
+  assert(
+    game.blocks
+      .filter((b) => b.userData.buildingId === 'E' && b.userData.role !== 'bridge')
+      .every((b) => b.userData.alive),
+  );
 });
 
 test('F courtyard is open through the roof while lower floors remain intact', async () => {
