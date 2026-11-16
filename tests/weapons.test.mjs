@@ -16,7 +16,7 @@ globalThis.devicePixelRatio=1;
 globalThis.ResizeObserver=class{observe(){}};
 globalThis.requestAnimationFrame=()=>{};
 let src=await readFile(new URL('../dist/game.js',import.meta.url),'utf8');
-for(const path of ['vendor/three.module.js','model.js','building.js','weapons.js','physics.js'])src=src.replace(JSON.stringify('./'+path).replaceAll('"',"'"),JSON.stringify(new URL('../dist/'+path,import.meta.url).href));
+for(const path of ['vendor/three.module.js','model.js','building.js','weapons.js','physics.js','effects.js'])src=src.replace(JSON.stringify('./'+path).replaceAll('"',"'"),JSON.stringify(new URL('../dist/'+path,import.meta.url).href));
 src=src.replace(/new THREE\.WebGLRenderer\(\{[\s\S]*?\}\)/,"({shadowMap:{},domElement:{},setPixelRatio(){},setSize(){},render(s,c){s.updateMatrixWorld(true);c.updateMatrixWorld(true);}})");
 src='const performance={now:()=>globalThis.__smashTestNow()};const setTimeout=()=>0,clearTimeout=()=>{};\n'+src;
 src+='\nexport {reset,attack,selectWeapon,frame,updateHud,detach,blocks,camera}; export const state=()=>({destroyed,points,initialCount,actions:actions.length,debris:debris.length,particles:particles.length,completed,containerIndex});';
