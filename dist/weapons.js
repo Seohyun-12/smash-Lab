@@ -1,39 +1,9 @@
 import * as THREE from './vendor/three.module.js';
 
 export const WEAPONS = {
-  hammer: {
-    name: '해머',
-    key: '1',
-    hint: '원하는 곳을 정확하게 타격',
-    radius: 2.8,
-    power: 1,
-    cooldown: 0.13,
-    shake: 0.35,
-    color: '#d5dbce',
-  },
-  blast: {
-    name: '폭탄',
-    key: '2',
-    hint: '넓은 범위를 한 번에 파괴',
-    radius: 6.8,
-    power: 1.8,
-    cooldown: 0.35,
-    shake: 1,
-    color: '#f0c16d',
-  },
-  laser: {
-    name: '레이저',
-    key: '3',
-    hint: '건물 뒤편까지 관통',
-    radius: 2.2,
-    power: 1,
-    cooldown: 0.18,
-    shake: 0.35,
-    color: '#f8ff6d',
-  },
   mallet: {
     name: '고무망치',
-    key: '4',
+    key: '1',
     hint: '커다란 고무망치로 위에서 쾅!',
     radius: 3.6,
     power: 0.65,
@@ -45,7 +15,7 @@ export const WEAPONS = {
   },
   ethanol: {
     name: '에탄올',
-    key: '5',
+    key: '2',
     hint: '푸른 분사로 넓은 외벽을 씻어내기',
     radius: 4.6,
     power: 0.35,
@@ -57,7 +27,7 @@ export const WEAPONS = {
   },
   foodMixer: {
     name: '푸드믹서',
-    key: '6',
+    key: '3',
     hint: '통째로 던져 묵직한 범위 타격',
     radius: 5.2,
     power: 1.3,
@@ -70,7 +40,7 @@ export const WEAPONS = {
   },
   homoMixer: {
     name: '호모믹서',
-    key: '7',
+    key: '4',
     hint: '긴 샤프트로 세로로 길게 파괴',
     radius: 3,
     power: 1.1,
@@ -83,7 +53,7 @@ export const WEAPONS = {
   },
   cosmetics: {
     name: '화장품 용기',
-    key: '8',
+    key: '5',
     hint: '펌프병·크림통·튜브·스포이드병을 번갈아 던지기',
     radius: 2.5,
     power: 0.8,
@@ -189,10 +159,7 @@ export function createWeaponModel(kind, variant = 0) {
 export function affectedByWeapon(kind, position, hit, direction) {
   const offset = position.clone().sub(hit),
     config = WEAPONS[kind];
-  if (kind === 'laser') {
-    const along = offset.dot(direction);
-    return offset.addScaledVector(direction, -along).length() < config.radius;
-  }
+  if (!config) return false;
   if (kind === 'homoMixer') return Math.hypot(offset.x, offset.z) < 2.5 && Math.abs(offset.y) < 7;
   return offset.length() < config.radius;
 }

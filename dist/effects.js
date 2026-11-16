@@ -27,18 +27,6 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
       particles.push(p);
     }
   }
-  function beam(hit, direction, color) {
-    const line = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([
-        camera.position.clone().add(new THREE.Vector3(0, -3, 0)),
-        hit.clone().add(direction.clone().multiplyScalar(24)),
-      ]),
-      new THREE.LineBasicMaterial({ color }),
-    );
-    line.userData = { age: 1.6, velocity: new THREE.Vector3(), line: true };
-    scene.add(line);
-    getParticles().push(line);
-  }
   function launch({ kind, hit, direction, floor, variant, buildingId, directBlock }) {
     const config = WEAPONS[kind];
     const model = createWeaponModel(kind, variant);
@@ -133,5 +121,5 @@ export function createWeaponEffects({ scene, camera, getParticles, onImpact, toa
     for (const a of actions) a.model.removeFromParent();
     actions.length = 0;
   }
-  return { actions, launch, update, clear, burst, beam };
+  return { actions, launch, update, clear, burst };
 }

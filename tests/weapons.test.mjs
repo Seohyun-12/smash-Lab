@@ -102,7 +102,7 @@ test('every additional tool has a finite 3D prop, including all four containers'
       assert(bounds.max.y > bounds.min.y);
     }
 });
-test('eight tools damage the target, with delayed impact for animated tools', () => {
+test('five tools damage the target, with delayed impact for animated tools', () => {
   for (const kind of Object.keys(WEAPONS)) {
     rebuild();
     game.selectWeapon(kind);
@@ -179,7 +179,7 @@ test('completion requires all blocks, even when the rounded percentage would be 
   assert.equal(el('#percent').textContent, '100%');
 });
 
-test('F is an independently destructible target for all eight tools', () => {
+test('F is an independently destructible target for all five tools', () => {
   for (const kind of Object.keys(WEAPONS)) {
     rebuild();
     game.focusBuilding('F');
@@ -208,7 +208,7 @@ test('E support collapse never cascades through the F floor with the same number
   const floor = game.blocks.filter((b) => b.userData.buildingId === 'E' && b.userData.floor === 0);
   for (const b of floor.slice(0, -1)) game.detach(b, new THREE.Vector3());
   const hit = floor.at(-1).position.clone();
-  game.impact('hammer', hit, new THREE.Vector3(0, 0, -1), 0, 0, 'E');
+  game.impact('mallet', hit, new THREE.Vector3(0, 0, -1), 0, 0, 'E');
   assert(game.blocks.filter((b) => b.userData.buildingId === 'E').every((b) => !b.userData.alive));
   assert(game.blocks.filter((b) => b.userData.buildingId === 'F').every((b) => b.userData.alive));
   assert.equal(el('#progressE').textContent, '100%');
@@ -274,14 +274,29 @@ test('an exact roof hit breaks a tile even at the corner between tile centers', 
   rebuild();
   game.setCameraMode('map');
   advance(0.04);
-  game.selectWeapon('hammer');
+  game.selectWeapon('mallet');
   const { buildings } = await import('../dist/model.js');
   const e = buildings[0];
   const x = Math.min(...e.outline.map((p) => p[0])) + 4.5 * 3;
   const z = Math.min(...e.outline.map((p) => p[1])) + 4.5 * 2;
   const point = new THREE.Vector3(x, e.height + 0.67, z).project(game.camera);
   game.attack((point.x + 1) * 600, (1 - point.y) * 325);
+  advance(1);
   assert(game.state().destroyed > 0, 'direct ray hit on roof tile must cause damage');
   game.setCameraMode('orbit');
   game.focusBuilding('all');
+});
+
+test('only the five requested tools remain with consecutive shortcuts', () => {
+  assert.deepEqual(Object.keys(WEAPONS), [
+    'mallet',
+    'ethanol',
+    'foodMixer',
+    'homoMixer',
+    'cosmetics',
+  ]);
+  assert.deepEqual(
+    Object.values(WEAPONS).map((w) => w.key),
+    ['1', '2', '3', '4', '5'],
+  );
 });

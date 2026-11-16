@@ -58,7 +58,7 @@ try {
   const desktop = await prepare({ viewport: { width: 1440, height: 1100 } });
   const page = desktop.page;
   await page.locator('[data-view="F"]').click();
-  await page.locator('[data-weapon="hammer"]').click();
+  await page.locator('[data-weapon="mallet"]').click();
   const point = await aim(page, 'F');
   await page.mouse.click(point.x, point.y);
   await page.waitForFunction(() => window.__smashTest.state().brokenF > 0);
@@ -85,7 +85,7 @@ try {
   });
   const phone = mobile.page;
   await phone.locator('[data-view="F"]').tap();
-  await phone.locator('[data-weapon="hammer"]').tap();
+  await phone.locator('[data-weapon="mallet"]').tap();
   const touch = await aim(phone, 'F');
   await phone.touchscreen.tap(touch.x, touch.y);
   await phone.waitForFunction(() => window.__smashTest.state().brokenF > 0);

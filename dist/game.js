@@ -18,7 +18,7 @@ let blocks = [],
   initialCount = 0,
   destroyed = 0,
   points = 0,
-  weapon = 'hammer',
+  weapon = 'mallet',
   sound = false,
   audioCtx,
   shake = 0,
@@ -112,7 +112,7 @@ function audio(kind = weapon) {
       g = audioCtx.createGain();
     osc.type = kind === 'mallet' ? 'sine' : kind === 'ethanol' ? 'triangle' : 'sawtooth';
     osc.frequency.setValueAtTime(
-      kind === 'laser' ? 450 : kind === 'ethanol' ? 750 : kind === 'mallet' ? 150 : 100,
+      kind === 'ethanol' ? 750 : kind === 'mallet' ? 150 : 100,
       audioCtx.currentTime,
     );
     osc.frequency.exponentialRampToValueAtTime(
@@ -177,7 +177,6 @@ function impact(kind, hit, direction, floor, variant = 0, buildingId, directBloc
     kind === 'ethanol' ? 42 : 25,
     kind === 'ethanol' || kind === 'cosmetics',
   );
-  if (kind === 'laser') effects.beam(hit, direction, config.color);
   const name = kind === 'cosmetics' ? CONTAINERS[variant % 4] : config.name;
   toast(
     count > 60
