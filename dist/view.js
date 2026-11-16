@@ -9,6 +9,10 @@ const boundsCenter = (points) => [
 ];
 const buildingCenter = boundsCenter(buildings.flatMap((building) => building.outline));
 const parkCenter = park ? boundsCenter(park.outline) : [buildingCenter[0], -50];
+const nearestParkDistance = Math.min(...parkOutline.map(([x,z]) => Math.hypot(x-buildingCenter[0],z-buildingCenter[1])));
+// Frame the near edge of the park, retaining the buildings as the main subject.
+// The full park remains in the scene and can be inspected by zooming out.
+export const parkForeground = parkOutline.filter(([x,z]) => Math.hypot(x-buildingCenter[0],z-buildingCenter[1]) < nearestParkDistance+13);
 
 // The camera stands on the park side, with the buildings behind the foreground park.
 export const parkFacingYaw = Math.atan2(
@@ -23,14 +27,14 @@ export function parkOverview(aspect, fov) {
       [x, building.height + 1, z],
     ]),
   );
-  points.push(...parkOutline.map(([x, z]) => [x, 0, z]));
+  points.push(...parkForeground.map(([x, z]) => [x, 0, z]));
   const center = [
     (Math.min(...points.map((p) => p[0])) + Math.max(...points.map((p) => p[0]))) / 2,
     8,
     (Math.min(...points.map((p) => p[2])) + Math.max(...points.map((p) => p[2]))) / 2,
   ];
   const yaw = parkFacingYaw;
-  const pitch = 0.56;
+  const pitch = 0.46;
   const tan = Math.tan((fov * Math.PI) / 360);
   let distance = 50;
   for (const point of points) {

@@ -303,7 +303,7 @@ test('only the five requested tools remain with consecutive shortcuts', () => {
 });
 
 test('home view places Space Park before both buildings on wide and phone screens', async () => {
-  const { parkOverview, parkOutline, parkFacingYaw } = await import('../dist/view.js');
+  const { parkOverview, parkForeground, parkFacingYaw } = await import('../dist/view.js');
   const { buildings } = await import('../dist/model.js');
   for (const aspect of [1200 / 650, 390 / 510]) {
     const view = parkOverview(aspect, 38);
@@ -316,7 +316,7 @@ test('home view places Space Park before both buildings on wide and phone screen
     camera.lookAt(new THREE.Vector3(...view.center));
     camera.updateMatrixWorld(true);
     const points = [
-      ...parkOutline.map(([x, z]) => [x, 0, z]),
+      ...parkForeground.map(([x, z]) => [x, 0, z]),
       ...buildings.flatMap((b) => b.outline.map(([x, z]) => [x, b.height, z])),
     ];
     for (const point of points) {
