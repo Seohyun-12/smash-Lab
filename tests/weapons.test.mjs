@@ -64,7 +64,7 @@ src =
   'const performance={now:()=>globalThis.__smashTestNow()};const setTimeout=()=>0,clearTimeout=()=>{};\n' +
   src;
 src +=
-  '\nexport {reset,attack,selectWeapon,frame,updateHud,detach,impact,focusBuilding,blocks,camera}; export const state=()=>({destroyed,points,initialCount,actions:actions.length,debris:debris.length,particles:particles.length,completed,containerIndex});';
+  '\nexport {reset,attack,selectWeapon,frame,updateHud,detach,impact,focusBuilding,setCameraMode,blocks,camera}; export const state=()=>({destroyed,points,initialCount,actions:actions.length,debris:debris.length,particles:particles.length,completed,containerIndex});';
 const game = await import('data:text/javascript;base64,' + Buffer.from(src).toString('base64'));
 function advance(seconds) {
   for (let i = 0; i < Math.ceil(seconds / 0.04); i++) {
@@ -244,4 +244,18 @@ test('floor tiles cover the actual E footprint without filling its slanted cutou
       building.id + ' floor area must match its source polygon',
     );
   }
+});
+
+test('map and street cameras keep the same destructible site', () => {
+  rebuild();
+  const count=game.blocks.length;
+  game.setCameraMode('map');advance(.04);
+  assert(game.camera.position.y>70);
+  game.setCameraMode('street');advance(.04);
+  assert(Math.abs(game.camera.position.y-2.1)<.001);
+  game.focusBuilding('F');advance(.04);
+  assert(Math.abs(game.camera.position.y-2.1)<.001);
+  assert.equal(game.blocks.length,count);
+  assert.equal(game.state().destroyed,0);
+  game.setCameraMode('orbit');game.focusBuilding('all');
 });

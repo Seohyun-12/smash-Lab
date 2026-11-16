@@ -32,6 +32,7 @@ let yaw = 0.32,
   distance = 112;
 const center = new THREE.Vector3(13, 10, 0);
 let cameraView = 'all';
+let cameraMode = 'orbit';
 const signMaterials = new Map(
   buildings.map((b) => [b.id, createSignMaterial('INNOVALLEY  /  ' + b.id)]),
 );
@@ -233,15 +234,20 @@ bindControls({
     focusBuilding('all');
   },
   focus: focusBuilding,
+  mode: setCameraMode,
   zoom(delta) {
     distance = THREE.MathUtils.clamp(distance + delta, 34, 260);
   },
   orbit(dx, dy) {
     yaw -= dx * 0.007;
-    pitch = THREE.MathUtils.clamp(pitch + dy * 0.006, 0.12, 1.1);
+    pitch = THREE.MathUtils.clamp(pitch + dy * 0.006, -0.18, 1.54);
   },
 });
 
+function setCameraMode(mode){
+  if(!['orbit','street','map'].includes(mode))return;
+  cameraMode=mode;focusBuilding(cameraView);
+}
 function focusBuilding(id = 'all') {
   cameraView = id;
   const chosen = buildings.find((b) => b.id === id);
@@ -263,7 +269,15 @@ function focusBuilding(id = 'all') {
     Math.max((width + depth * 0.35) / (2 * tan * camera.aspect), height / (2 * tan)) * 1.25 +
     depth * 0.65;
   distance = THREE.MathUtils.clamp(distance, 50, 250);
+  if(cameraMode==='map'){
+    yaw=0;pitch=1.54;
+    distance=THREE.MathUtils.clamp(Math.max(width/camera.aspect,depth)/(2*tan)*1.45+height,50,250);
+  }else if(cameraMode==='street'){
+    yaw=.1;
+    pitch=Math.asin((2.1-center.y)/distance);
+  }
   ui.renderView(id);
+  ui.renderMode(cameraMode);
 }
 function resize() {
   const { width, height } = viewport.getBoundingClientRect();
