@@ -40,7 +40,7 @@ const signMaterials = new Map(
     b.id,
     createSignMaterial(b.exterior.signs[0].text, {
       subtitle: b.exterior.signs[0].subtitle,
-        color:b.exterior.signs[0].color,
+      color: b.exterior.signs[0].color,
       transparent: true,
     }),
   ]),

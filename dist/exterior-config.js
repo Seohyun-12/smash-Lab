@@ -80,8 +80,16 @@ export function exteriorFor(id) {
               role: 'innovalley-sign',
             },
           ]
-        : [{ text: 'COSMAX',
-            color: '#41494b', side: '-x', u: 0.78, floor: 1, role: 'cosmax-sign' }],
+        : [
+            {
+              text: 'COSMAX',
+              color: '#41494b',
+              side: '-x',
+              u: 0.78,
+              floor: 1,
+              role: 'cosmax-sign',
+            },
+          ],
     roof:
       id === 'E'
         ? { type: 'equipment-garden', confidence: 'aerial-observed' }

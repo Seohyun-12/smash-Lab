@@ -195,7 +195,7 @@ export function createSignMaterial(text = 'INNOVALLEY', options = {}) {
     ctx.fillStyle = '#d9e4d3';
     ctx.fillRect(0, 0, 1024, 128);
   }
-  ctx.fillStyle = options.color??(options.transparent ? '#f3f5f4' : '#294b49');
+  ctx.fillStyle = options.color ?? (options.transparent ? '#f3f5f4' : '#294b49');
   ctx.font = 'bold 59px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(text, 512, options.subtitle ? 56 : 85);
