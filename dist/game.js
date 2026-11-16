@@ -11,11 +11,11 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.shadowMap.enable
 scene.add(new THREE.HemisphereLight(0xf5fff0,0x536b61,2.6));
 const sun=new THREE.DirectionalLight(0xfff3cf,3);sun.position.set(-35,70,25);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-60,right:60,top:60,bottom:-60,near:1,far:160});sun.shadow.bias=-.0005;scene.add(sun);
 const pieceGeo=new THREE.IcosahedronGeometry(.24,0);
-buildScenery(scene);
+buildScenery(scene,B);
 const target=new THREE.Group();scene.add(target);
 let blocks=[],debris=[],particles=[],initialCount=0, destroyed=0,points=0,weapon='hammer',sound=false,audioCtx,shake=0,combo=0,lastHit=0,completed=false;
 let actions=[],nextAttack=0,containerIndex=0;
-let yaw=.68,pitch=.5,distance=75;
+let yaw=.32,pitch=.5,distance=75;
 const center=new THREE.Vector3(0,9,0);
 const signMat=createSignMaterial();
 function addBlock(x,y,z,w,h,d,m,floor){const o=cube(target,x,y,z,w,h,d,m);o.userData={alive:true,floor};blocks.push(o);return o;}
@@ -75,7 +75,7 @@ function updateActions(dt){
 }
 function selectWeapon(w){if(!WEAPONS[w])return;weapon=w;document.querySelectorAll('.weapon').forEach(b=>{const active=b.dataset.weapon===w;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',active);});$('#weaponHint').textContent=WEAPONS[w].hint;toast(WEAPONS[w].name+' · '+WEAPONS[w].hint);}
 document.querySelectorAll('.weapon').forEach(b=>b.onclick=()=>selectWeapon(b.dataset.weapon));
-$('#reset').onclick=reset;$('#home').onclick=()=>{yaw=.68;pitch=.5;distance=75;};$('#zoomIn').onclick=()=>distance=Math.max(38,distance-7);$('#zoomOut').onclick=()=>distance=Math.min(125,distance+7);
+$('#reset').onclick=reset;$('#home').onclick=()=>{yaw=.32;pitch=.5;distance=75;};$('#zoomIn').onclick=()=>distance=Math.max(38,distance-7);$('#zoomOut').onclick=()=>distance=Math.min(125,distance+7);
 $('#sound').onclick=()=>{sound=!sound;$('#sound').textContent='소리 '+(sound?'ON':'OFF');$('#sound').setAttribute('aria-pressed',sound);if(sound)audio();};$('#info').onclick=()=>$('#details').showModal();
 window.addEventListener('keydown',e=>{if(e.target.closest('button,dialog,input,textarea,select')||e.repeat)return;const chosen=Object.entries(WEAPONS).find(([,v])=>v.key===e.key);if(chosen)selectWeapon(chosen[0]);if(e.key.toLowerCase()==='r')reset();});
 let drag=null;

@@ -1,6 +1,8 @@
 import * as THREE from './vendor/three.module.js';
+import {site} from './site.js';
 
 // Static scene construction: ground, roads, scenery and the breakable target building.
+// Roads and neighbor buildings come from OpenStreetMap via dist/site.js.
 
 export function mat(color, roughness = .8) {
  return new THREE.MeshStandardMaterial({color, roughness});
@@ -17,7 +19,9 @@ export const materials = {
  bark: mat('#6c7964'),
  car: mat('#e3d9b7'),
  neighbor: mat('#9eb2a7'),
- neighborBand: mat('#7f9b94'),
+ neighborEdge: new THREE.LineBasicMaterial({color: '#7f9b94'}),
+ cycleway: mat('#8fa79a'),
+ path: mat('#c4cfc0'),
 };
 
 const box = new THREE.BoxGeometry(1, 1, 1);
@@ -32,34 +36,64 @@ export function cube(parent, x, y, z, w, h, d, material) {
  return mesh;
 }
 
-export function buildScenery(scene) {
- const m = materials;
- cube(scene, 0, -1, 0, 95, 1.5, 75, mat('#a5bca6'));
- cube(scene, 0, -.13, 0, 39, .6, 30, mat('#b7c9b3'));
- cube(scene, 0, .22, 0, 29, .15, 20, mat('#d0d8c6'));
+const GROUND_SIZE = 240;
+const ROAD_LIFT = {primary: 0, primary_link: .01, secondary: .02, tertiary: .03, residential: .04, service: .05, pedestrian: .06, footway: .07, cycleway: .08};
 
- cube(scene, 0, -.25, 25, 110, .3, 12, m.road);
- cube(scene, -33, -.25, -5, 12, .3, 70, m.road);
- for (let x = -50; x < 55; x += 7) cube(scene, x, -.07, 25, 3, .025, .15, m.trim);
- for (let z = -37; z < 29; z += 7) cube(scene, -33, -.07, z, .15, .025, 3, m.trim);
+// Neighbor buildings are extruded from their OSM outlines, kept visually quieter than the target.
+function addNeighbor(scene, neighbor) {
+ const shape = new THREE.Shape(neighbor.outline.map(([x, z]) => new THREE.Vector2(x, -z)));
+ const geometry = new THREE.ExtrudeGeometry(shape, {depth: neighbor.height - neighbor.base, bevelEnabled: false});
+ geometry.rotateX(-Math.PI / 2);
+ geometry.translate(0, neighbor.base, 0);
+ const mesh = new THREE.Mesh(geometry, materials.neighbor);
+ mesh.castShadow = true;
+ mesh.receiveShadow = true;
+ scene.add(mesh);
+ const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 20), materials.neighborEdge);
+ scene.add(edges);
+}
 
- // Surrounding masses are fictional scenery, kept visually quieter than the target.
- for (const [x, z, w, h, d] of [[-26, -24, 13, 13, 13], [5, -30, 20, 11, 11], [29, -17, 12, 18, 16], [34, 9, 10, 8, 13]]) {
-  cube(scene, x, h / 2 - .5, z, w, h, d, m.neighbor);
-  for (let y = 2; y < h; y += 2.2) cube(scene, x, y, z + d / 2 + .02, w - .6, .65, .08, m.neighborBand);
+function addRoad(scene, road) {
+ const half = GROUND_SIZE / 2;
+ const y = -.25 + (ROAD_LIFT[road.kind] ?? 0);
+ const surface = road.kind === 'cycleway' ? materials.cycleway : road.kind === 'footway' || road.kind === 'pedestrian' ? materials.path : materials.road;
+ for (let i = 0; i < road.path.length - 1; i++) {
+  const [x1, z1] = road.path[i];
+  const [x2, z2] = road.path[i + 1];
+  if (Math.max(Math.abs(x1), Math.abs(z1)) > half && Math.max(Math.abs(x2), Math.abs(z2)) > half) continue;
+  const length = Math.hypot(x2 - x1, z2 - z1);
+  // Extend each segment by the road width so consecutive segments overlap at bends.
+  const segment = cube(scene, (x1 + x2) / 2, y, (z1 + z2) / 2, length + road.width, .3, road.width, surface);
+  segment.rotation.y = -Math.atan2(z2 - z1, x2 - x1);
+  segment.castShadow = false;
  }
+}
 
+export function buildScenery(scene, B) {
+ const m = materials;
+ const width = B.columns * B.cell;
+ const depth = B.depth * B.cell;
+ cube(scene, 0, -1, 0, GROUND_SIZE, 1.5, GROUND_SIZE, mat('#a5bca6'));
+ cube(scene, 0, -.13, 0, width + 18, .6, depth + 19.5, mat('#b7c9b3'));
+ cube(scene, 0, .22, 0, width + 8, .15, depth + 9.5, mat('#d0d8c6'));
+
+ for (const road of site.roads) addRoad(scene, road);
+ for (const neighbor of site.neighbors) addNeighbor(scene, neighbor);
+
+ // Trees and parked cars are decorative and not taken from map data.
  const crown = new THREE.IcosahedronGeometry(1.7, 1);
- for (const [x, z] of [[-20, 13], [-13, 15], [-4, 15], [6, 15], [17, 15], [21, 5], [21, -5], [-21, -8], [-21, 3]]) {
-  cube(scene, x, 1, z, .25, 2, .25, m.bark);
+ const frontZ = depth / 2 + 5.5;
+ for (let x = -width / 2; x <= width / 2 + .1; x += width / 5) {
+  cube(scene, x, 1, frontZ, .25, 2, .25, m.bark);
   const tree = new THREE.Mesh(crown, m.leaf);
-  tree.position.set(x, 3, z);
+  tree.position.set(x, 3, frontZ);
   tree.scale.y = 1.3;
   tree.castShadow = true;
   scene.add(tree);
  }
 
- for (const [x, z] of [[-19, 19], [14, 20], [24, 20]]) {
+ for (const x of [-width / 2 + 2, 4, width / 2 - 3]) {
+  const z = depth / 2 + 10.5;
   cube(scene, x, .5, z, 2.5, .8, 1.15, m.car);
   cube(scene, x, .95, z, 1.3, .5, 1.05, m.dark);
  }
@@ -109,12 +143,14 @@ export function buildTarget(B, addBlock, signMaterial) {
   }
 
   // Breakable floor plates, visible through holes in the façade.
-  for (let k = 0; k < 7; k++) addBlock((k - 3) * 3, y - 1.07, 0, 2.96, .28, depth + .6, concrete, f);
+  const plates = Math.round(width / 3);
+  const plateWidth = width / plates;
+  for (let k = 0; k < plates; k++) addBlock((k - (plates - 1) / 2) * plateWidth, y - 1.07, 0, plateWidth - .04, .28, depth + .6, concrete, f);
  }
 
  const roofFloor = B.floors - 1;
- addBlock(0, top + .5, 0, 22, .5, 12, trim, roofFloor);
+ addBlock(0, top + .5, 0, width + 1, .5, depth + 1.5, trim, roofFloor);
  addBlock(-6, top + 1.5, -1, 4, 2, 3, dark, roofFloor);
  addBlock(1, top + 1.25, -2, 3, 1.5, 3, concrete, roofFloor);
- addBlock(0, top - .6, 5.62, 11, .95, .15, signMaterial, roofFloor);
+ addBlock(0, top - .6, depth / 2 + .37, 11, .95, .15, signMaterial, roofFloor);
 }

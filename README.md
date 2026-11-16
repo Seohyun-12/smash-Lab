@@ -21,9 +21,17 @@ Thrown props deal damage on arrival. In-flight props retain their original tool 
 
 Run logic checks with `node --experimental-default-type=module tests/weapons.test.mjs`. The harness uses real Three.js geometry and raycasting with a stubbed DOM/renderer; visual appearance and actual WebGL/audio still need browser verification.
 
-## Building fidelity
+## Building fidelity and map data
 
-Address confirmed as 경기 성남시 분당구 판교로 255 through https://www.activepost.co.kr/introduction/location/ . Exterior photos uniquely identifying E have not been verified. The model, its ten floors, dimensions, facade, roof and surrounding masses are provisional gameplay geometry, not an accurate reconstruction. This is disclosed in the UI. Update `dist/model.js` and the model builder in `dist/game.js` after obtaining verified exterior references. Cosmax factory is not implemented in this phase.
+Address 경기 성남시 분당구 판교로 255 confirmed through https://www.activepost.co.kr/introduction/location/ .
+
+Footprint, height and surroundings come from OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0):
+
+- Target: way 684716463 "판교이노밸리클러스터 E동" — ≈57 × 35.5 m, 10 levels, 44 m. `dist/model.js` uses 20 × 12 cells of 1.5 units and 2.3-unit floors (≈0.52 units per meter).
+- Neighbor buildings and roads within ~150 m are extruded/drawn from OSM outlines in `dist/site.js`.
+- Regenerate with `python3 tools/osm_site.py > dist/site.js` (fetches the OSM API).
+
+Not verified: façade colors, window pattern, roof equipment, sign. Trees and cars are decorative. Google Maps imagery is intentionally not used (its terms forbid extracting imagery or deriving models). Cosmax factory is not implemented in this phase.
 
 ## Rendering and physics
 
