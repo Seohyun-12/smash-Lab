@@ -41,7 +41,7 @@ export function roofOpening(building) {
 
 export function addRoofDetails(building, addBlock, materials) {
   const b = bounds(building),
-    top = building.height + 0.5,
+    top = building.height + 0.68,
     floor = building.floors - 1;
   function piece(x, y, z, w, h, d, material, role = 'roof-equipment', details = {}) {
     return addBlock(x, y, z, w, h, d, material, floor, {

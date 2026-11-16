@@ -486,6 +486,14 @@ test('E and F retain different observed roof equipment', () => {
   );
 });
 
+test('roof greenery sits above the opaque roof surface',async()=>{
+  rebuild();
+  const {buildings}=await import('../dist/model.js');
+  const e=buildings.find(b=>b.id==='E');
+  const garden=game.blocks.find(b=>b.userData.buildingId==='E'&&b.userData.role==='roof-garden');
+  assert(garden.position.y-garden.scale.y/2>=e.height+.66,'garden may not be hidden inside roof tiles');
+});
+
 test('projecting glazed boxes and colored strips belong only to the documented road face', () => {
   rebuild();
   const boxes = game.blocks.filter((b) => b.userData.role === 'glass-box');
