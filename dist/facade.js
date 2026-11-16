@@ -217,7 +217,7 @@ export function addObservedSign(building, addBlock, signMaterial) {
     });
     mesh.rotation.y = Math.atan2(face.nx, face.nz);
     const logo = piece(
-      along + width / 2 + 0.17,
+      along+(face.ux*Math.cos(mesh.rotation.y)-face.uz*Math.sin(mesh.rotation.y))*(width/2+.17),
       y,
       0.14,
       0.18,

@@ -524,6 +524,7 @@ test('observed signs use the documented face and height', async () => {
   const { buildings } = await import('../dist/model.js');
   assert(e.position.y > buildings[0].height * 0.9);
   assert(f.position.y < buildings[1].height * 0.25);
+  for(const sign of [e,f]){const logo=game.blocks.find(b=>b.userData.role==='sign-logo'&&b.userData.buildingId===sign.userData.buildingId);const right=new THREE.Vector3(1,0,0).applyEuler(sign.rotation);assert(logo.position.clone().sub(sign.position).dot(right)>0,'red logo must sit to the right of its lettering');}
 });
 
 test('road view exposes the documented +z face while home framing stays park-facing', () => {
