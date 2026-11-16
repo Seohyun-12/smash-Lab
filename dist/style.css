@@ -12,3 +12,5 @@
 .camera-modes small a{color:#bed7b9;text-underline-offset:3px}
 
 .weapons{grid-template-columns:repeat(5,minmax(0,1fr))}@media(max-width:1000px) and (min-width:761px){.weapons{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.weapons{grid-template-columns:repeat(2,minmax(0,1fr))}.weapon:last-child{grid-column:1/-1}}
+
+.camera-modes{flex-wrap:wrap}.camera-modes small{line-height:1.6}@media(max-width:760px){.camera-modes small{flex-basis:100%;margin-left:0}.camera-modes{gap:6px}}
