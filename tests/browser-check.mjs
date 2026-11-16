@@ -31,7 +31,7 @@ async function prepare(options) {
         body +
         `
 window.__smashTest={
-  state:()=>({destroyed,actions:actions.length,sound,audioState:audioCtx?.state,
+  state:()=>({destroyed,actions:actions.length,sound,audioState:audioCtx?.state,environment:scene.userData.environmentStatus,
     camera:[camera.position.x,camera.position.y,camera.position.z],
     brokenE:blocks.filter(b=>b.userData.buildingId==='E'&&!b.userData.alive).length,
     brokenF:blocks.filter(b=>b.userData.buildingId==='F'&&!b.userData.alive).length}),
@@ -45,6 +45,9 @@ window.__smashTest={
   });
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__smashTest);
+  await page.waitForFunction(() => window.__smashTest.state().environment === 'photographic');
+  assert.equal(await page.locator('.weapon').count(), 5);
+  assert.equal(await page.locator('[data-weapon=mallet]').getAttribute('aria-pressed'), 'true');
   return { page, context };
 }
 

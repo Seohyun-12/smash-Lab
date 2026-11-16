@@ -9,10 +9,14 @@ const boundsCenter = (points) => [
 ];
 const buildingCenter = boundsCenter(buildings.flatMap((building) => building.outline));
 const parkCenter = park ? boundsCenter(park.outline) : [buildingCenter[0], -50];
-const nearestParkDistance = Math.min(...parkOutline.map(([x,z]) => Math.hypot(x-buildingCenter[0],z-buildingCenter[1])));
+const nearestParkDistance = Math.min(
+  ...parkOutline.map(([x, z]) => Math.hypot(x - buildingCenter[0], z - buildingCenter[1])),
+);
 // Frame the near edge of the park, retaining the buildings as the main subject.
 // The full park remains in the scene and can be inspected by zooming out.
-export const parkForeground = parkOutline.filter(([x,z]) => Math.hypot(x-buildingCenter[0],z-buildingCenter[1]) < nearestParkDistance+13);
+export const parkForeground = parkOutline.filter(
+  ([x, z]) => Math.hypot(x - buildingCenter[0], z - buildingCenter[1]) < nearestParkDistance + 13,
+);
 
 // The camera stands on the park side, with the buildings behind the foreground park.
 export const parkFacingYaw = Math.atan2(
